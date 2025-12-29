@@ -19,7 +19,7 @@ import Bookings from "./Pages/owner/Bookings";
 import AllRooms from "./Pages/owner/AllRooms";
 import AddRoom from "./Pages/owner/AddRoom";
 import Loader from "./Components/Loader";
-
+import SingleVilla from "./Pages/SingleVilla";
 
 function App() {
   const ownerPath = useLocation().pathname.includes("owner");
@@ -31,6 +31,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/villas" element={<Villas />} />
+        <Route path="/villa/:id" element={<SingleVilla />} />
         <Route path="/rooms" element={<Rooms />} />
         <Route path="/room/:id" element={<SingleRoom />} />
         <Route path="/signup" element={<Signup />} />
@@ -38,7 +39,6 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/loader/:nextUrl" element={<Loader />} />
-
 
         <Route path="/owner" element={owner ? <OwnerLayout /> : <Login />}>
           <Route index element={owner ? <AllVillas /> : <Login />} />

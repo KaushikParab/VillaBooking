@@ -7,7 +7,7 @@ import {
   getUserBookings,
   getVillaBookings,
   stripePayment,
-} from "../controllers/booking.contoller.js";
+} from "../controllers/booking.controller.js";
 const bookingRouter = express.Router();
 
 bookingRouter.post("/check-availability", checkRoomAvailability);

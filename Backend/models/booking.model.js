@@ -17,6 +17,7 @@ const bookingSchema = new mongoose.Schema(
       ref: "Room",
       required: true,
     },
+
     checkIn: {
       type: Date,
       required: true,
@@ -25,31 +26,56 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+
     persons: {
       type: Number,
       required: true,
     },
+
     status: {
       type: String,
-      enum: ["confirmed", "pending", "cancelled"],
+      enum: ["pending", "confirmed", "expired", "cancelled"],
       default: "pending",
     },
+
     totalPrice: {
       type: Number,
       required: true,
     },
+
     paymentMethod: {
       type: String,
       default: "Pay At Villa",
       required: true,
     },
+
     isPaid: {
       type: Boolean,
       default: false,
     },
+
+    // FOR AUTO DELETE
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
+/* ======================================================
+   INDEXES
+====================================================== */
+
+// TTL INDEX — AUTO DELETE WHEN expiresAt < now
+bookingSchema.add({
+  expiresAt: { type: Date, default: null },
+});
+
+bookingSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
+// OVERLAP CHECK TO PREVENT DOUBLE BOOKING
+bookingSchema.index({ room: 1, checkIn: 1, checkOut: 1 });
 
 const Booking = mongoose.model("Booking", bookingSchema);
 export default Booking;

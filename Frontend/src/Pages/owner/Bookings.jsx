@@ -32,8 +32,15 @@ function Bookings() {
   };
 
   useEffect(() => {
+  fetchMyBookings();
+
+  const interval = setInterval(() => {
     fetchMyBookings();
-  }, []);
+  }, 5000); // every 5 seconds
+
+  return () => clearInterval(interval);
+}, []);
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -90,7 +97,7 @@ function Bookings() {
         {/* Booking List */}
         <div className="bg-[#1E1E1E] rounded-2xl shadow-lg overflow-hidden">
           {/* Desktop Header */}
-          <div className="hidden md:grid md:grid-cols-12 bg-[#1E1E1E] px-6 py-4 border-b border-gray-400 font-semibold text-[#ffffff]">
+          <div className="hidden md:grid md:grid-cols-12 bg-gradient-to-r from-black to-indigo-800 px-6 py-4 border-b border-gray-400 font-semibold text-[#ffffff]">
             <div className="col-span-4 text-xl">Villa & Room</div>
             <div className="col-span-4 text-xl">Dates</div>
             <div className="col-span-4 text-xl">Payment</div>
@@ -109,10 +116,15 @@ function Bookings() {
                     <div className="col-span-1 md:col-span-4">
                       <div className="flex gap-4">
                         <img
-                          src={`http://localhost:4000/images/${booking.room.images[0]}`}
-                          alt={booking.room.roomType}
+                          src={
+                            booking.room?.images?.length > 0
+                              ? `http://localhost:4000/images/${booking.room.images[0]}`
+                              : "/no-image.png"
+                          }
+                          alt={booking.room?.roomType || "Room"}
                           className="w-20 h-16 md:w-24 md:h-20 rounded-lg object-cover flex-shrink-0"
                         />
+
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-[#ffffff] text-lg mb-1">
                             {booking.villa.villaName}
@@ -180,12 +192,6 @@ function Bookings() {
                     {/* Payment */}
                     <div className="col-span-1 md:col-span-2">
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-200">
-                            {booking.paymentMethod}
-                          </span>
-                        </div>
                         <p className="font-bold text-lg text-gray-50">
                           ₹ {booking.totalPrice}
                         </p>
@@ -204,11 +210,6 @@ function Bookings() {
                     {/* Status */}
                     <div className="col-span-1 md:col-span-2">
                       <div className="flex items-center gap-2">
-                        {/* <div
-                          className={`w-3 h-3 rounded-full ${getStatusColor(
-                            booking.status
-                          )}`}
-                        ></div> */}
                         <Icon
                           className={`w-4 h-4 ${getStatusTextColor(
                             booking.status

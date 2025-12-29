@@ -7,7 +7,6 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 function OwnerLayout() {
   const location = useLocation();
-  
 
   const dashboardicon = <LayoutDashboard className="w-6 h-6" />;
   const { owner, setOwner, axios } = useContext(AppContext);

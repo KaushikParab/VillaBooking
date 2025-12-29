@@ -1,6 +1,7 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
+
 import {
   Bath,
   Building,
@@ -26,9 +27,16 @@ import {
 import toast from "react-hot-toast";
 
 function SingleRoom() {
-  const { roomData, axios, navigate } = useContext(AppContext);
+  const { roomData, axios, navigate, user } = useContext(AppContext);
   const { id } = useParams();
   const room = roomData.find((r) => r._id === id);
+  const location = useLocation();
+  useEffect(() => {
+    if (location.state?.bookingData) {
+      setBookingData(location.state.bookingData);
+      setIsAvailable(location.state.isAvailable || false);
+    }
+  }, [location.state]);
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [bookingData, setBookingData] = useState({
@@ -84,10 +92,10 @@ function SingleRoom() {
       if (data.success) {
         if (data.isAvailable) {
           setIsAvailable(true);
-          toast.success("Room is available");
+          toast.success("Room is available ✅");
         } else {
           setIsAvailable(false);
-          toast.success("Room is not available");
+          toast.error("Room is not available ❌");
         }
       }
     } catch (error) {
@@ -97,6 +105,19 @@ function SingleRoom() {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    // Authentication of User logged in check
+    if (!user) {
+      toast.error("Please login to book a room");
+      navigate("/login", {
+        state: {
+          redirectTo: location.pathname,
+          bookingData,
+          isAvailable,
+        },
+      });
+      return;
+    }
+
     try {
       if (!isAvailable) {
         return checkRoomAvailability();

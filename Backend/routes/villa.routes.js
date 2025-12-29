@@ -14,9 +14,9 @@ const villaRouter = express.Router();
 
 villaRouter.post(
   "/register",
-  upload.single("image"),
   isAuthenticated,
   isOwner,
+  upload.array("images",4),
   registerVilla
 );
 

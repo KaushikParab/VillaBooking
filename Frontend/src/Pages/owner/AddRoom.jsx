@@ -35,8 +35,14 @@ const AddRoom = () => {
   }, []);
 
   const handleChange = (e) => {
-    setRoomData({ ...roomData, [e.target.name]: e.target.value });
-  };
+  const { name, type, checked, value } = e.target;
+
+  setRoomData({
+    ...roomData,
+    [name]: type === "checkbox" ? checked : value,
+  });
+};
+
 
   const handleImageChange = (e, index) => {
     const file = e.target.files[0];

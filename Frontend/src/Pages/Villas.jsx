@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import React, { useContext } from "react";
 import { AppContext } from "../Context/AppContext";
 
@@ -11,12 +12,13 @@ function Villas() {
 
       <div className="flex flex-wrap items-center justify-center mt-8 gap-4 max-w-5xl mx-auto">
         {villaData.map((item, index) => (
-          <div
-            key={index}
+          <Link
+            key={item._id}
+            to={`/villa/${item._id}`}
             className="relative group rounded-lg overflow-hidden cursor-pointer"
           >
             <img
-              src={`http://localhost:4000/images/${item.image}`}
+              src={`http://localhost:4000/images/${item.images[0]}`}
               alt=""
               className="size-56 object-cover object-top"
             />
@@ -25,7 +27,7 @@ function Villas() {
               <p className="text-sm">{item.villaAddress}</p>
               <h1 className="text-lg">₹ {item.price}</h1>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

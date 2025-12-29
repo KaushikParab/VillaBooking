@@ -1,37 +1,46 @@
 import Villa from "../models/villa.model.js";
 
 //Register a new villa
+
 export const registerVilla = async (req, res) => {
   const { id } = req.user;
+
   try {
-    const { villaName, villaAddress, rating, price, amenities } = req.body;
-    const image = req.file.filename;
+    const { villaName, villaContactNo, villaAddress, rating, price, amenities } = req.body;
+
+    const images = req.files?.map((file) => file.filename);
+
     if (
       !villaName ||
+      !villaContactNo ||
       !villaAddress ||
       !rating ||
       !price ||
       !amenities ||
-      !image
+      !images ||
+      images.length === 0
     ) {
-      return res
-        .status(400)
-        .json({ message: "All fields are required", success: false });
+      return res.status(400).json({
+        message: "All fields are required",
+        success: false,
+      });
     }
 
-    const newVilla = new Villa({
+    const newVilla = await Villa.create({
       villaName,
+      villaContactNo,
       villaAddress,
       rating,
       price,
       amenities,
-      image,
+      images,
       owner: id,
     });
-    await newVilla.save();
-    return res
-      .status(201)
-      .json({ message: "Hotel registered successfully", success: true });
+
+    return res.status(201).json({
+      message: "Villa registered successfully",
+      success: true,
+    });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }

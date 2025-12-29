@@ -1,12 +1,13 @@
 // Login.jsx
 import { useContext, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { AppContext } from "../Context/AppContext";
 import toast from "react-hot-toast";
-import { formToJSON } from "axios";
 
 export default function Login() {
   const { setUser, navigate, setOwner, axios } = useContext(AppContext);
+  const location = useLocation();
+
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -24,18 +25,34 @@ export default function Login() {
 
       if (data.success) {
         toast.success(data.message);
+
+        /*  REDIRECT LOGIC  */
+        const redirectTo = location.state?.redirectTo;
+        const bookingData = location.state?.bookingData;
+        const isAvailable = location.state?.isAvailable;
+
         if (data.user.role === "owner") {
           setOwner(true);
           navigate("/owner");
         } else {
           setUser(true);
-          navigate("/");
+
+          if (redirectTo) {
+            navigate(redirectTo, {
+              state: {
+                bookingData,
+                isAvailable,
+              },
+            });
+          } else {
+            navigate("/");
+          }
         }
       } else {
         toast.error(data.message);
       }
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Login failed");
     }
   };
 
@@ -118,28 +135,14 @@ export default function Login() {
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-[#404a42] hover:text-[#192231] focus:outline-none focus:ring-2 focus:ring-[#c0b283]"
                 >
-                  {/* Simple eye icon (no extra deps) */}
                   {showPassword ? (
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M3 3l18 18" />
                       <path d="M10.58 10.58a3 3 0 104.24 4.24" />
-                      <path d="M9.88 5.09A9.94 9.94 0 0121 12c-.73 1.22-1.66 2.31-2.74 3.22" />
-                      <path d="M6.1 6.1A9.94 9.94 0 003 12c.73 1.22 1.66 2.31 2.74 3.22A13.8 13.8 0 0012 18c1.81 0 3.54-.35 5.08-1" />
+                      <path d="M9.88 5.09A9.94 9.94 0 0121 12" />
                     </svg>
                   ) : (
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="h-5 w-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
@@ -148,37 +151,20 @@ export default function Login() {
               </div>
             </div>
 
-            {/* Remember + Submit */}
-            <div className="flex items-center justify-between">
-              <label className="inline-flex items-center gap-2 text-sm text-[#AAAAAA] cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="appearance-none h-4 w-4 rounded-md border border-[#444444] bg-[#1E1E1E] 
-               checked:bg-[#6A0DAD] checked:border-[#6A0DAD] checked:after:content-['✔'] 
-               checked:after:flex checked:after:items-center checked:after:justify-center 
-               checked:after:text-white checked:after:text-[10px]"
-                  defaultChecked
-                />
-                Remember me
-              </label>
-
-              <button
-                type="submit"
-                className="inline-flex items-center rounded-full border border-[#c0b283]/60 bg-[#6A0DAD] px-5 py-2 font-medium text-[#FFFFFF] shadow-sm transition-colors hover:bg-[#FFD369] hover:text-[#6A0DAD] focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[#c0b283]"
-              >
-                Login
-              </button>
-            </div>
-
-            {/* Divider */}
-            <div className="h-px bg-gradient-to-r from-transparent via-[#c0b283]/60 to-transparent" />
+            {/* Submit */}
+            <button
+              type="submit"
+              className="w-full rounded-full bg-[#6A0DAD] px-5 py-2 font-medium text-white transition hover:bg-[#FFD369] hover:text-[#6A0DAD]"
+            >
+              Login
+            </button>
 
             {/* Sign up */}
             <p className="text-center text-sm text-[#404a42]">
               New to Stavilo?{" "}
               <Link
                 to="/signup"
-                className="font-medium text-[#FFD369] underline decoration-[#c0b283]/70 underline-offset-4 hover:text-[#FFFFFF]"
+                className="font-medium text-[#FFD369] underline underline-offset-4 hover:text-white"
               >
                 Create an account
               </Link>
@@ -186,7 +172,6 @@ export default function Login() {
           </form>
         </section>
 
-        {/* Footer note */}
         <p className="mt-6 text-center text-xs text-[#eddbcd]/80">
           © {new Date().getFullYear()} Stavilo
         </p>

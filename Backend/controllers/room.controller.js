@@ -33,17 +33,27 @@ export const addRoom = async (req, res) => {
 export const getOwnerRooms = async (req, res) => {
   try {
     const { id } = req.user;
-    const rooms = await Room.find().populate({
-      path: "villa",
-      match: { owner: id },
-      select: "villaName villaAddress rating amenities ",
+
+    const rooms = await Room.find()
+      .populate({
+        path: "villa",
+        select: "villaName villaAddress rating amenities owner",
+      });
+
+    const ownerRooms = rooms.filter(
+      (room) => room.villa && room.villa.owner.toString() === id
+    );
+
+    return res.status(200).json({
+      success: true,
+      rooms: ownerRooms,
     });
-    const ownerRooms = rooms.filter((room) => room.villa.owner == id);
-    return res.status(200).json({ rooms, success: true });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // Get all rooms for USers
 export const getAllRooms = async (req, res) => {

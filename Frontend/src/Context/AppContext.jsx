@@ -19,14 +19,18 @@ const AppContextProvider = ({ children }) => {
     try {
       const { data } = await axios.get("/api/user/is-auth");
       if (data.success) {
-        setUser(true);
+        if (data.user.role === "user") {
+          setUser(true);
+        } else {
+          setOwner(true);
+        }
       }
     } catch (error) {
       console.log("error", error);
     }
   };
 
-  const fetchVillasData = async() => {
+  const fetchVillasData = async () => {
     try {
       const { data } = await axios.get("/api/villa/get-all");
       if (data.success) {
@@ -39,7 +43,7 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
-  const fetchRoomsData = async() => {
+  const fetchRoomsData = async () => {
     try {
       const { data } = await axios.get("/api/room/get-all");
       if (data.success) {
@@ -56,7 +60,6 @@ const AppContextProvider = ({ children }) => {
     checkUserLoggedInOrNot();
     fetchVillasData();
     fetchRoomsData();
-
   }, []);
 
   const value = {

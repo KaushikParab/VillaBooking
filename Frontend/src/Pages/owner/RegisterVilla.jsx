@@ -1,5 +1,4 @@
-import { useContext } from "react";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import { AppContext } from "../../Context/AppContext";
 import toast from "react-hot-toast";
 
@@ -8,157 +7,170 @@ const RegisterVilla = () => {
 
   const [data, setData] = useState({
     villaName: "",
+    villaContactNo: "",
     villaAddress: "",
     rating: "",
     price: "",
     amenities: "",
-    image: null,
+    images: [],
   });
-
-  const [file, setFile] = useState(null);
-  const [preview, setPreview] = useState(null);
 
   const handleChange = (e) => {
     setData({ ...data, [e.target.name]: e.target.value });
   };
 
-  const handleImageChange = (e) => {
-    const selectedFile = e.target.files[0];
-    setFile(selectedFile);
-    setData({ ...data, image: selectedFile });
-    if (selectedFile) {
-      const imageUrl = URL.createObjectURL(selectedFile);
-      setPreview(imageUrl);
+  const handleImageChange = (e, index) => {
+    const file = e.target.files[0];
+    if (file) {
+      const updatedImages = [...data.images];
+      updatedImages[index] = file;
+      setData({ ...data, images: updatedImages });
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const formData = new FormData();
     formData.append("villaName", data.villaName);
+    formData.append("villaContactNo", data.villaContactNo);
     formData.append("villaAddress", data.villaAddress);
     formData.append("rating", data.rating);
     formData.append("price", data.price);
     formData.append("amenities", data.amenities);
-    formData.append("image", file);
+
+    for (let i = 0; i < data.images.length; i++) {
+      formData.append("images", data.images[i]);
+    }
+
     try {
-      const { data } = await axios.post("/api/villa/register", formData);
-      if (data.success) {
-        toast.success(data.message);
+      const { data: res } = await axios.post("/api/villa/register", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (res.success) {
+        toast.success(res.message);
         navigate("/owner");
       } else {
-        toast.error(data.message);
+        toast.error(res.message);
       }
     } catch (error) {
       toast.error(error.message);
     }
   };
+
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
       <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
+        {/* Get Villa Images */}
         <div>
-          <p className="text-base font-medium">Villa Image</p>
+          <p className="text-base font-medium">Villa Images</p>
 
-          <div className="w-full my-4">
-            {/* Villa Image Preview */}
-            {preview && (
-              <div className="mb-3 flex justify-center">
-                <img
-                  src={preview}
-                  alt=""
-                  className="w-24 h-24 object-cover rounded shadow"
-                />
-              </div>
-            )}
-
-            {/* File Upload Input */}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleImageChange}
-              className="block w-full text-sm text-white/80 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-[#6A0DAD] hover:file:bg-purple-200 cursor-pointer"
-            />
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {Array(4)
+              .fill("")
+              .map((_, index) => (
+                <label key={index} htmlFor={`villaImage${index}`}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    id={`villaImage${index}`}
+                    hidden
+                    onChange={(e) => handleImageChange(e, index)}
+                  />
+                  <img
+                    className="max-w-24 rounded-md cursor-pointer"
+                    src={
+                      data.images[index]
+                        ? URL.createObjectURL(data.images[index])
+                        : "https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/e-commerce/uploadArea.png"
+                    }
+                    alt="upload"
+                    width={100}
+                    height={100}
+                  />
+                </label>
+              ))}
           </div>
         </div>
+
+        {/* Get Villa Name */}
         <div className="flex flex-col gap-1 max-w-md">
-          <label className="text-base font-medium" htmlFor="product-name">
-            Villa Name
-          </label>
+          <label className="text-base font-medium">Villa Name</label>
           <input
             name="villaName"
             value={data.villaName}
             onChange={handleChange}
             type="text"
-            placeholder="Type here"
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
             required
           />
         </div>
+
+        {/* Get Villa villa Contact Number */}
         <div className="flex flex-col gap-1 max-w-md">
-          <label
-            className="text-base font-medium"
-            htmlFor="product-description"
-          >
-            Villa Address
-          </label>
+          <label className="text-base font-medium">Villa Contact Number</label>
+          <input
+            name="villaContactNo"
+            value={data.villaContactNo}
+            onChange={handleChange}
+            type="text"
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+            required
+          />
+        </div>
+
+        {/* Get Villa Address */}
+        <div className="flex flex-col gap-1 max-w-md">
+          <label className="text-base font-medium">Villa Address</label>
           <textarea
             name="villaAddress"
             value={data.villaAddress}
             onChange={handleChange}
             rows={4}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
-            placeholder="Type here"
-          ></textarea>
+          />
         </div>
 
-        <div className="flex items-center gap-5 flex-wrap">
-          <div className="flex-1 flex flex-col gap-1 w-32">
-            <label className="text-base font-medium" htmlFor="product-price">
-              Rating
-            </label>
-            <input
-              type="number"
-              name="rating"
-              value={data.rating}
-              onChange={handleChange}
-              placeholder="0"
-              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
-              required
-            />
-          </div>
+        {/* Get Villa Ratings */}
+        <div className="flex flex-col gap-1 w-32">
+          <label className="text-base font-medium">Rating</label>
+          <input
+            type="number"
+            name="rating"
+            value={data.rating}
+            onChange={handleChange}
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+            required
+          />
         </div>
-        <div className="flex items-center gap-5 flex-wrap">
-          <div className="flex-1 flex flex-col gap-1 w-32">
-            <label className="text-base font-medium" htmlFor="product-price">
-              Price
-            </label>
-            <input
-              type="number"
-              name="price"
-              value={data.price}
-              onChange={handleChange}
-              placeholder="0"
-              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
-              required
-            />
-          </div>
+
+        {/* Get Villa Price Per Night Per Person */}
+        <div className="flex flex-col gap-1 w-32">
+          <label className="text-base font-medium">Price</label>
+          <input
+            type="number"
+            name="price"
+            value={data.price}
+            onChange={handleChange}
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+            required
+          />
         </div>
+
+        {/* Get Villa Amenities */}
         <div className="flex flex-col gap-1 max-w-md">
-          <label
-            className="text-base font-medium"
-            htmlFor="product-description"
-          >
-            Villa Amenities
-          </label>
+          <label className="text-base font-medium">Villa Amenities</label>
           <textarea
             name="amenities"
             value={data.amenities}
             onChange={handleChange}
             rows={4}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
-            placeholder="Type here"
-          ></textarea>
+          />
         </div>
+
+        {/* Submit Form */}
         <button className="px-8 py-2.5 bg-[#6A0DAD] text-white font-medium rounded">
           Register Villa
         </button>
