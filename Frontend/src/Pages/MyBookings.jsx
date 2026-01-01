@@ -113,8 +113,8 @@ function MyBookings() {
                       <div className="flex gap-4">
                         <img
                           src={
-                            booking.room?.images?.[0]
-                              ? `http://localhost:4000/images/${booking.room.images[0]}`
+                            booking.villa?.images?.[0]
+                              ? `http://localhost:4000/images/${booking.villa.images[0]}`
                               : "https://via.placeholder.com/150"
                           }
                           alt={booking.room?.roomType || "Room"}
@@ -127,7 +127,7 @@ function MyBookings() {
                           </h3>
 
                           <p className="text-blue-600 font-medium mb-1">
-                            {booking.room?.roomType || "Room Deleted"}
+                            {booking.room?.roomType || ""}
                           </p>
 
                           <div className="flex items-center gap-1 text-gray-400 text-sm mb-1">

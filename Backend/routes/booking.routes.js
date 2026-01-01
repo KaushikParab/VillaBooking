@@ -4,6 +4,7 @@ import { isOwner } from "../middlewares/isOwner.js";
 import {
   bookRoom,
   checkRoomAvailability,
+  checkVillaAvailability,
   getUserBookings,
   getVillaBookings,
   stripePayment,
@@ -11,6 +12,7 @@ import {
 const bookingRouter = express.Router();
 
 bookingRouter.post("/check-availability", checkRoomAvailability);
+bookingRouter.post("/check-villa-availability", checkVillaAvailability);
 bookingRouter.post("/book", isAuthenticated, bookRoom);
 bookingRouter.get("/user", isAuthenticated, getUserBookings);
 bookingRouter.get("/villa", isAuthenticated, isOwner, getVillaBookings);

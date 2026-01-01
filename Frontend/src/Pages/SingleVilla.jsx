@@ -1,6 +1,6 @@
-import { useContext, useState, useRef } from "react";
+import { useContext, useState, useRef, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
   Star,
   CheckCircle,
@@ -18,16 +18,35 @@ import {
   User as UserIcon,
   Phone,
   Home,
+  Calendar,
 } from "lucide-react";
 import { MdLocationPin } from "react-icons/md";
+import toast from "react-hot-toast";
 
 function SingleVilla() {
-  const { villaData, roomData } = useContext(AppContext);
+  const { villaData, roomData, axios, user } = useContext(AppContext);
   const { id } = useParams();
   const navigate = useNavigate();
 
   const villa = villaData.find((v) => v._id === id);
+  const location = useLocation();
   const [selectedImage, setSelectedImage] = useState(0);
+  const [bookingData, setBookingData] = useState({
+    checkIn: "",
+    checkOut: "",
+    persons: 1,
+  });
+  const [isAvailable, setIsAvailable] = useState(false);
+
+  const onChangeHandler = (e) => {
+    setBookingData({ ...bookingData, [e.target.name]: e.target.value });
+  };
+  useEffect(() => {
+      if (location.state?.bookingData) {
+        setBookingData(location.state.bookingData);
+        setIsAvailable(location.state.isAvailable || false);
+      }
+    }, [location.state]);
 
   /* ================= ROOMS ================= */
   const villaRooms = roomData.filter((room) => room.villa?._id === villa?._id);
@@ -79,6 +98,69 @@ function SingleVilla() {
       "Breakfast Included": Coffee,
     };
     return map[amenity] || CheckCircle;
+  };
+
+  const checkVillaAvailability = async () => {
+    try {
+      if (bookingData.checkIn >= bookingData.checkOut) {
+        toast.error("Check-In date should be before Check-Out date");
+        return;
+      }
+      const { data } = await axios.post("/api/bookings/check-villa-availability", {
+        villa: villa._id,
+        checkInDate: bookingData.checkIn,
+        checkOutDate: bookingData.checkOut,
+      });
+      if (data.success) {
+        if (data.isAvailable) {
+          setIsAvailable(true);
+          toast.success("Villa is available ✅");
+        } else {
+          setIsAvailable(false);
+          toast.error("Villa is not available ❌");
+        }
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+    // Authentication of User logged in check
+    if (!user) {
+      toast.error("Please login to book a room");
+      navigate("/login", {
+        state: {
+          redirectTo: location.pathname,
+          bookingData,
+          isAvailable,
+        },
+      });
+      return;
+    }
+
+    try {
+      if (!isAvailable) {
+        return checkVillaAvailability();
+      } else {
+        const { data } = await axios.post("/api/bookings/book", {
+          villa: villa._id,
+          checkInDate: bookingData.checkIn,
+          checkOutDate: bookingData.checkOut,
+          persons: bookingData.persons,
+          paymentMethod: "Pay At Villa",
+        });
+        if (data.success) {
+          toast.success(data.message);
+          navigate("/my-bookings");
+          scrollTo(0, 0);
+        } else {
+          toast.error(data.message);
+        }
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   return (
@@ -230,19 +312,97 @@ function SingleVilla() {
             })}
           </div>
         </div>
-        {/* AMENITIES */}
-        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8 mt-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Amenities</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {villa.amenities.split(",").map((amenity, i) => {
-              const Icon = getAmenityIcon(amenity);
-              return (
-                <div key={i} className="flex gap-3 bg-blue-50 p-3 rounded-lg">
-                  <Icon className="text-blue-600" />
-                  <span className="text-gray-700">{amenity}</span>
+        <div className="grid lg:grid-cols-2 gap-8 ">
+          {/* AMENITIES */}
+          <div className="bg-[#1E1E1E]/80 rounded-2xl p-8 mt-8">
+            <h2 className="text-2xl font-bold text-white mb-6">Amenities</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {villa.amenities.split(",").map((amenity, i) => {
+                const Icon = getAmenityIcon(amenity);
+                return (
+                  <div key={i} className="flex gap-3 bg-blue-50 p-3 rounded-lg">
+                    <Icon className="text-blue-600" />
+                    <span className="text-gray-700">{amenity}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Booking Form */}
+          <div className="lg:col-span-1">
+            <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky mt-8">
+              <h2 className="text-2xl font-bold mb-6">Book This Villa</h2>
+              <form onSubmit={onSubmitHandler} className="space-y-4">
+                <div>
+                  <label
+                    className="block text-sm font-medium text-[#ffffff]/80 mb-2"
+                    htmlFor=""
+                  >
+                    <Calendar className="w-4 h-4 inline mr-2" />
+                    Check-in Date
+                  </label>
+                  <input
+                    type="date"
+                    name="checkIn"
+                    min={new Date().toISOString().split("T")[0]}
+                    value={bookingData.checkIn}
+                    onChange={onChangeHandler}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
-              );
-            })}
+
+                <div>
+                  <label
+                    className="block text-sm font-medium text-[#ffffff]/80 mb-2"
+                    htmlFor=""
+                  >
+                    <Calendar className="w-4 h-4 inline mr-2" />
+                    Check-out Date
+                  </label>
+                  <input
+                    type="date"
+                    name="checkOut"
+                    min={bookingData.checkIn}
+                    value={bookingData.checkOut}
+                    onChange={onChangeHandler}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="block text-sm font-medium text-[#ffffff]/80 mb-2"
+                    htmlFor=""
+                  >
+                    <UserIcon className="w-4 h-4 inline mr-2" />
+                    Number of Guests
+                  </label>
+                  <input
+                    type="number"
+                    value={bookingData.persons}
+                    name="persons"
+                    onChange={onChangeHandler}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="border-t pt-4 mt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[#ffffff]/90">Priceper Night</span>
+                    <span className="text-xl font-bold">
+                      ₹ {villa.price}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white`}
+                  type="submit"
+                >
+                  {isAvailable ? "Book Now" : "Check Availability"}
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

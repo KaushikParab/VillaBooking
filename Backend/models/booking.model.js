@@ -7,21 +7,39 @@ const bookingSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
     villa: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Villa",
       required: true,
     },
+
+    // SINGLE ROOM BOOKING
     room: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Room",
-      required: true,
+      default: null,
+    },
+
+    // ENTIRE VILLA BOOKING
+    rooms: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Room",
+      },
+    ],
+
+    bookingType: {
+      type: String,
+      enum: ["room", "villa"],
+      default: "room",
     },
 
     checkIn: {
       type: Date,
       required: true,
     },
+
     checkOut: {
       type: Date,
       required: true,
@@ -30,12 +48,7 @@ const bookingSchema = new mongoose.Schema(
     persons: {
       type: Number,
       required: true,
-    },
-
-    status: {
-      type: String,
-      enum: ["pending", "confirmed", "expired", "cancelled"],
-      default: "pending",
+      min: 1,
     },
 
     totalPrice: {
@@ -54,7 +67,12 @@ const bookingSchema = new mongoose.Schema(
       default: false,
     },
 
-    // FOR AUTO DELETE
+    status: {
+      type: String,
+      enum: ["pending", "confirmed", "expired", "cancelled"],
+      default: "pending",
+    },
+
     expiresAt: {
       type: Date,
       default: null,
@@ -67,15 +85,24 @@ const bookingSchema = new mongoose.Schema(
    INDEXES
 ====================================================== */
 
-// TTL INDEX — AUTO DELETE WHEN expiresAt < now
-bookingSchema.add({
-  expiresAt: { type: Date, default: null },
+// TTL INDEX — Auto delete expired unpaid bookings
+bookingSchema.index(
+  { expiresAt: 1 },
+  { expireAfterSeconds: 0 }
+);
+
+// Prevent double booking at villa level
+bookingSchema.index({
+  villa: 1,
+  checkIn: 1,
+  checkOut: 1,
 });
 
-bookingSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+// Faster queries for user bookings
+bookingSchema.index({ user: 1, createdAt: -1 });
 
-// OVERLAP CHECK TO PREVENT DOUBLE BOOKING
-bookingSchema.index({ room: 1, checkIn: 1, checkOut: 1 });
+// Faster owner villa bookings
+bookingSchema.index({ villa: 1, createdAt: -1 });
 
 const Booking = mongoose.model("Booking", bookingSchema);
 export default Booking;

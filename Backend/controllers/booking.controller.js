@@ -3,11 +3,10 @@ import Room from "../models/room.model.js";
 import Villa from "../models/villa.model.js";
 import User from "../models/user.model.js";
 import transporter from "../config/nodemailer.js";
-import stripe from "stripe";
+import Stripe from "stripe";
 
-/* ================================
-   CHECK VILLA AVAILABILITY
-================================ */
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
 export const checkAvailability = async ({
   villa,
   checkInDate,
@@ -24,13 +23,18 @@ export const checkAvailability = async ({
 };
 
 /* ================================
-   CHECK AVAILABILITY API
+   CHECK ROOM AVAILABILITY API
 ================================ */
 export const checkRoomAvailability = async (req, res) => {
   try {
     const { room, checkInDate, checkOutDate } = req.body;
 
     const roomData = await Room.findById(room).populate("villa");
+    if (!roomData) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Room not found" });
+    }
 
     const isAvailable = await checkAvailability({
       villa: roomData.villa._id,
@@ -45,19 +49,125 @@ export const checkRoomAvailability = async (req, res) => {
 };
 
 /* ================================
-   BOOK ROOM
+   CHECK VILLA AVAILABILITY API
+================================ */
+export const checkVillaAvailability = async (req, res) => {
+  try {
+    const { villa, checkInDate, checkOutDate } = req.body;
+
+    const isAvailable = await checkAvailability({
+      villa,
+      checkInDate,
+      checkOutDate,
+    });
+
+    res.json({ success: true, isAvailable });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+/* ================================
+   BOOK ROOM OR ENTIRE VILLA
 ================================ */
 export const bookRoom = async (req, res) => {
   try {
     const { id } = req.user;
     const user = await User.findById(id);
 
-    const { room, checkInDate, checkOutDate, persons, paymentMethod } =
+    const { room, villa, checkInDate, checkOutDate, persons, paymentMethod } =
       req.body;
 
-    const roomData = await Room.findById(room).populate("villa");
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-    // CHECK VILLA AVAILABILITY
+    /* =========================
+       ENTIRE VILLA BOOKING
+    ========================= */
+    if (villa) {
+      const rooms = await Room.find({ villa });
+
+      if (!rooms.length) {
+        return res.status(400).json({
+          success: false,
+          message: "No rooms found in this villa",
+        });
+      }
+
+      const isAvailable = await checkAvailability({
+        villa,
+        checkInDate,
+        checkOutDate,
+      });
+
+      if (!isAvailable) {
+        return res.status(400).json({
+          success: false,
+          message: "Villa already booked for selected dates",
+        });
+      }
+
+      const villaData = await Villa.findById(villa);
+      if (!villaData) {
+        return res.status(404).json({
+          success: false,
+          message: "Villa not found",
+        });
+      }
+      const pricePerPersonPerNight = Number(villaData.price);
+      const totalPrice = pricePerPersonPerNight * persons * nights;
+
+      const booking = await Booking.create({
+        user: id,
+        villa,
+        rooms: rooms.map((r) => r._id),
+        bookingType: "villa",
+        checkIn,
+        checkOut,
+        persons,
+        totalPrice,
+        paymentMethod,
+        status: "pending",
+        isPaid: false,
+      });
+
+      // AUTO DELETE IF NOT PAID IN 1 MIN
+      setTimeout(async () => {
+        const latest = await Booking.findById(booking._id);
+        if (latest && !latest.isPaid && latest.status === "pending") {
+          await Booking.findByIdAndDelete(booking._id);
+        }
+      }, 1 * 60 * 1000);
+
+      await transporter.sendMail({
+        from: process.env.SENDER_EMAIL,
+        to: user.email,
+        subject: "Villa Booking Created",
+        html: `
+          <h2>Entire Villa Booking Created</h2>
+          <p>Your villa is reserved for 1 minute.</p>
+          <p>Please complete payment.</p>
+        `,
+      });
+
+      return res.json({
+        success: true,
+        message: "Villa booking created. Complete payment.",
+        bookingId: booking._id,
+      });
+    }
+
+    /* =========================
+       SINGLE ROOM BOOKING
+    ========================= */
+    const roomData = await Room.findById(room).populate("villa");
+    if (!roomData) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Room not found" });
+    }
+
     const isAvailable = await checkAvailability({
       villa: roomData.villa._id,
       checkInDate,
@@ -71,20 +181,13 @@ export const bookRoom = async (req, res) => {
       });
     }
 
-    // PRICE CALCULATION
-    const checkIn = new Date(checkInDate);
-    const checkOut = new Date(checkOutDate);
-    const nights =
-      Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+    const totalPrice = roomData.pricePerNight * nights * persons;
 
-    const totalPrice =
-      roomData.pricePerNight * nights * persons;
-
-    // CREATE BOOKING
     const booking = await Booking.create({
       user: id,
       room,
       villa: roomData.villa._id,
+      bookingType: "room",
       checkIn,
       checkOut,
       persons,
@@ -94,28 +197,28 @@ export const bookRoom = async (req, res) => {
       isPaid: false,
     });
 
-    // AUTO DELETE IF NOT PAID IN 10 MIN
     setTimeout(async () => {
-      const latestBooking = await Booking.findById(booking._id);
-      if (latestBooking && !latestBooking.isPaid) {
+      const latest = await Booking.findById(booking._id);
+      if (latest && !latest.isPaid) {
         await Booking.findByIdAndDelete(booking._id);
-        console.log("Unpaid booking deleted");
       }
     }, 1 * 60 * 1000);
 
-    // EMAIL
     await transporter.sendMail({
       from: process.env.SENDER_EMAIL,
       to: user.email,
-      subject: "Villa Booking Created",
+      subject: "Room Booking Created",
       html: `
-        <h2>Booking Created</h2>
-        <p>Your booking is reserved for 10 minutes.</p>
-        <p>Please complete payment.</p>
+        <h2>Room Booking Created</h2>
+        <p>Your booking is reserved for 1 minute.</p>
       `,
     });
 
-    res.json({ success: true, message:"Complete your booking in 10 minutes" });
+    res.json({
+      success: true,
+      message: "Room booking created. Complete payment.",
+      bookingId: booking._id,
+    });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
@@ -128,21 +231,21 @@ export const bookRoom = async (req, res) => {
 export const stripePayment = async (req, res) => {
   try {
     const { bookingId } = req.body;
+
     const booking = await Booking.findById(bookingId);
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
-    const roomData = await Room.findById(booking.room).populate("villa");
-
-    const stripeInstance = stripe(process.env.STRIPE_SECRET_KEY);
-
-    const session = await stripeInstance.checkout.sessions.create({
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
         {
           price_data: {
             currency: "inr",
             product_data: {
-              name: roomData.villa.villaName,
+              name:
+                booking.bookingType === "villa"
+                  ? "Entire Villa Booking"
+                  : "Room Booking",
             },
             unit_amount: booking.totalPrice * 100,
           },
@@ -162,7 +265,7 @@ export const stripePayment = async (req, res) => {
 
     res.json({ success: true, url: session.url });
   } catch (error) {
-    res.status(500).json({ message: "Payment failed" });
+    res.status(500).json({ message: "Stripe payment failed" });
   }
 };
 
@@ -171,7 +274,7 @@ export const stripePayment = async (req, res) => {
 ================================ */
 export const getUserBookings = async (req, res) => {
   const bookings = await Booking.find({ user: req.user.id })
-    .populate("room villa")
+    .populate("room rooms villa")
     .sort({ createdAt: -1 });
 
   res.json({ success: true, bookings });
@@ -182,10 +285,10 @@ export const getUserBookings = async (req, res) => {
 ================================ */
 export const getVillaBookings = async (req, res) => {
   const villas = await Villa.find({ owner: req.user.id });
-  const villaIds = villas.map(v => v._id);
+  const villaIds = villas.map((v) => v._id);
 
   const bookings = await Booking.find({ villa: { $in: villaIds } })
-    .populate("room villa")
+    .populate("room rooms villa")
     .sort({ createdAt: -1 });
 
   res.json({ success: true, bookings });

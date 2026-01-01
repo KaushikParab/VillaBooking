@@ -18,6 +18,7 @@ function Bookings() {
   const { axios } = useContext(AppContext);
 
   const [bookingData, setBookingData] = useState([]);
+
   const fetchMyBookings = async () => {
     try {
       const { data } = await axios.get("/api/bookings/villa");
@@ -32,15 +33,14 @@ function Bookings() {
   };
 
   useEffect(() => {
-  fetchMyBookings();
-
-  const interval = setInterval(() => {
     fetchMyBookings();
-  }, 5000); // every 5 seconds
 
-  return () => clearInterval(interval);
-}, []);
+    const interval = setInterval(() => {
+      fetchMyBookings();
+    }, 5000);
 
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -88,7 +88,6 @@ function Bookings() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">My Booking</h1>
           <p className="text-[#ffffff]/90 text-lg">
-            {" "}
             Here are the villa bookings. You can view details and manage your
             reservations.
           </p>
@@ -103,9 +102,11 @@ function Bookings() {
             <div className="col-span-4 text-xl">Payment</div>
             <div className="col-span-4 text-xl">Actions</div>
           </div>
+
           <div className="divide-y divide-gray-300">
             {bookingData.map((booking) => {
               const Icon = getStatusIcon(booking.status);
+
               return (
                 <div
                   key={booking._id}
@@ -117,8 +118,8 @@ function Bookings() {
                       <div className="flex gap-4">
                         <img
                           src={
-                            booking.room?.images?.length > 0
-                              ? `http://localhost:4000/images/${booking.room.images[0]}`
+                            booking.villa?.images?.[0]
+                              ? `http://localhost:4000/images/${booking.villa.images[0]}`
                               : "/no-image.png"
                           }
                           alt={booking.room?.roomType || "Room"}
@@ -127,17 +128,21 @@ function Bookings() {
 
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-[#ffffff] text-lg mb-1">
-                            {booking.villa.villaName}
+                            {booking.villa?.villaName || "Villa Deleted"}
                           </h3>
+
                           <p className="text-blue-600 font-medium mb-1">
-                            {booking.room.roomType}
+                            {booking.room?.roomType || ""}
                           </p>
+
                           <div className="flex items-center gap-1 text-gray-400 text-sm mb-1">
                             <MapPin className="w-3 h-3" />
                             <span className="truncate">
-                              {booking.villa.villaAddress}
+                              {booking.villa?.villaAddress ||
+                                "Address not available"}
                             </span>
                           </div>
+
                           <div className="flex items-center gap-1 text-gray-400 text-sm">
                             <Users className="w-3 h-3" />
                             <span>
@@ -152,14 +157,13 @@ function Bookings() {
                     {/* Dates */}
                     <div className="col-span-1 md:col-span-3">
                       <div className="space-y-2">
-                        {/* Check-In Date */}
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-300" />
                           <div>
                             <p className="text-sm text-gray-400">Check-in</p>
                             <p className="font-medium text-gray-100">
                               {new Date(booking.checkIn).toLocaleDateString(
-                                "en-Us",
+                                "en-US",
                                 {
                                   weekday: "short",
                                   month: "short",
@@ -169,14 +173,14 @@ function Bookings() {
                             </p>
                           </div>
                         </div>
-                        {/* Check-Out Date */}
+
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-300" />
                           <div>
                             <p className="text-sm text-gray-400">Check-out</p>
                             <p className="font-medium text-gray-100">
                               {new Date(booking.checkOut).toLocaleDateString(
-                                "en-Us",
+                                "en-US",
                                 {
                                   weekday: "short",
                                   month: "short",
