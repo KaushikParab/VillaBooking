@@ -1,12 +1,18 @@
 import Villa from "../models/villa.model.js";
 
-//Register a new villa
-
+// ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
   const { id } = req.user;
 
   try {
-    const { villaName, villaContactNo, villaAddress, rating, price, amenities } = req.body;
+    const {
+      villaName,
+      villaContactNo,
+      villaAddress,
+      rating,
+      price,
+      amenities,
+    } = req.body;
 
     const images = req.files?.map((file) => file.filename);
 
@@ -26,7 +32,7 @@ export const registerVilla = async (req, res) => {
       });
     }
 
-    const newVilla = await Villa.create({
+    await Villa.create({
       villaName,
       villaContactNo,
       villaAddress,
@@ -46,42 +52,95 @@ export const registerVilla = async (req, res) => {
   }
 };
 
-// Get owner villas
+// ================= OWNER VILLAS =================
 export const getOwnerVillas = async (req, res) => {
   const { id } = req.user;
+
   try {
     const villas = await Villa.find({ owner: id }).populate(
       "owner",
       "name email"
     );
+
     return res.status(200).json({ villas, success: true });
   } catch (error) {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-// Get all villas
+// ================= ALL VILLAS (OPTIMIZED) =================
 export const getAllVillas = async (req, res) => {
   try {
-    const villas = await Villa.find().populate("owner", "name email");
-    return res.status(200).json({ villas, success: true });
+    const {
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 6,
+      sort = "latest", // priceLow | priceHigh | rating | latest
+    } = req.query;
+
+    // -------- FILTER --------
+    let filter = {};
+
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // -------- SORT --------
+    let sortOption = { createdAt: -1 };
+
+    if (sort === "priceLow") sortOption = { price: 1 };
+    if (sort === "priceHigh") sortOption = { price: -1 };
+    if (sort === "rating") sortOption = { rating: -1 };
+
+    // -------- PAGINATION --------
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const totalVillas = await Villa.countDocuments(filter);
+
+    const villas = await Villa.find(filter)
+      .populate("owner", "name email")
+      .sort(sortOption)
+      .skip(skip)
+      .limit(Number(limit));
+
+    return res.status(200).json({
+      success: true,
+      villas,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(totalVillas / limit),
+        totalVillas,
+        hasMore: Number(page) * Number(limit) < totalVillas,
+      },
+    });
   } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
+    console.error(error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 
-// Delete Villa
+// ================= DELETE VILLA =================
 export const deleteVilla = async (req, res) => {
   const { villaId } = req.params;
+
   try {
-    const deleteVilla = await Villa.findByIdAndDelete(villaId);
-    if (!deleteVilla) {
-      return res.status(404).json({ message: "Hotel not found" });
+    const deletedVilla = await Villa.findByIdAndDelete(villaId);
+
+    if (!deletedVilla) {
+      return res.status(404).json({ message: "Villa not found" });
     }
-    return res
-      .status(200)
-      .json({ message: "Hotel deleted successfully", success: true });
+
+    return res.status(200).json({
+      message: "Villa deleted successfully",
+      success: true,
+    });
   } catch (error) {
-    return res.status(200).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

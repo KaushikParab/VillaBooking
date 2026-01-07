@@ -6,7 +6,7 @@ const villaSchema = new mongoose.Schema(
     villaContactNo: { type: String, required: true },
     villaAddress: { type: String, required: true },
     rating: { type: String, required: true },
-    price: { type: String, required: true },
+    price: { type: Number, required: true },
     amenities: { type: String, required: true },
 
     images: { type: [String], required: true },

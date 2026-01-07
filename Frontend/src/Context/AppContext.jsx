@@ -1,8 +1,8 @@
 import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { villasData, roomsData } from "../assets/assets.js";
 import axios from "axios";
 import toast from "react-hot-toast";
+
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = "http://localhost:4000";
 
@@ -10,57 +10,109 @@ export const AppContext = createContext();
 
 const AppContextProvider = ({ children }) => {
   const navigate = useNavigate();
+
   const [user, setUser] = useState(null);
   const [owner, setOwner] = useState(null);
-  const [villaData, setVillaData] = useState([]);
-  const [roomData, setRoomData] = useState([]);
 
+  // -------- VILLAS (PAGINATION) --------
+  const [villaData, setVillaData] = useState([]);
+  const [villaPage, setVillaPage] = useState(1);
+  const [villaHasMore, setVillaHasMore] = useState(true);
+  const [villaLoading, setVillaLoading] = useState(false);
+
+  // -------- ROOMS (PAGINATION) --------
+  const [roomData, setRoomData] = useState([]);
+  const [roomPage, setRoomPage] = useState(1);
+  const [roomHasMore, setRoomHasMore] = useState(true);
+  const [roomLoading, setRoomLoading] = useState(false);
+
+  // ================= AUTH CHECK =================
   const checkUserLoggedInOrNot = async () => {
     try {
       const { data } = await axios.get("/api/user/is-auth");
       if (data.success) {
-        if (data.user.role === "user") {
-          setUser(true);
-        } else {
-          setOwner(true);
-        }
+        data.user.role === "user" ? setUser(true) : setOwner(true);
       }
     } catch (error) {
-      console.log("error", error);
+      console.log(error);
     }
   };
 
-  const fetchVillasData = async () => {
-    try {
-      const { data } = await axios.get("/api/villa/get-all");
-      if (data.success) {
-        setVillaData(data.villas);
-      } else {
-        toast.error(data.message);
-      }
-    } catch (error) {
-      toast.error(data.message);
-    }
-  };
+  // ================= FETCH VILLAS (PAGINATED) =================
+  const fetchVillasData = async ({ minPrice, maxPrice, sort } = {}) => {
+    if (villaLoading || !villaHasMore) return;
 
-  const fetchRoomsData = async () => {
+    setVillaLoading(true);
+
     try {
-      const { data } = await axios.get("/api/room/get-all");
+      const { data } = await axios.get("/api/villa/get-all", {
+        params: {
+          page: villaPage,
+          limit: 6,
+          minPrice,
+          maxPrice,
+          sort,
+        },
+      });
+
       if (data.success) {
-        setRoomData(data.rooms);
+        setVillaData((prev) => [...prev, ...data.villas]);
+        setVillaHasMore(data.pagination.hasMore);
       } else {
         toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setVillaLoading(false);
     }
   };
 
+  // ================= RESET VILLAS (FILTER / SORT CHANGE) =================
+  const resetVillas = () => {
+    setVillaData([]);
+    setVillaPage(1);
+    setVillaHasMore(true);
+  };
+
+  // ================= FETCH ROOMS =================
+  const fetchRoomsData = async () => {
+    if (roomLoading || !roomHasMore) return;
+
+    setRoomLoading(true);
+
+    try {
+      const { data } = await axios.get("/api/room/get-all", {
+        params: {
+          page: roomPage,
+          limit: 8,
+        },
+      });
+
+      if (data.success) {
+        setRoomData((prev) => [...prev, ...data.rooms]);
+        setRoomHasMore(data.pagination.hasMore);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setRoomLoading(false);
+    }
+  };
+
+  // ================= INITIAL LOAD =================
   useEffect(() => {
     checkUserLoggedInOrNot();
-    fetchVillasData();
-    fetchRoomsData();
   }, []);
+
+  // 🔥 This triggers villa fetch when page changes
+  useEffect(() => {
+    fetchVillasData();
+  }, [villaPage]);
+
+  useEffect(() => {
+    fetchRoomsData();
+  }, [roomPage]);
 
   const value = {
     navigate,
@@ -68,8 +120,21 @@ const AppContextProvider = ({ children }) => {
     setUser,
     owner,
     setOwner,
+
+    // Villas
     villaData,
+    fetchVillasData,
+    setVillaPage,
+    villaHasMore,
+    villaLoading,
+    resetVillas,
+
+    // Rooms
     roomData,
+    setRoomPage,
+    roomHasMore,
+    roomLoading,
+
     axios,
   };
 

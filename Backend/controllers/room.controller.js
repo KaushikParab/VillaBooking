@@ -58,19 +58,35 @@ export const getOwnerRooms = async (req, res) => {
 // Get all rooms for USers
 export const getAllRooms = async (req, res) => {
   try {
+    const { page = 1, limit = 8 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const totalRooms = await Room.countDocuments();
+
     const rooms = await Room.find()
       .populate({
         path: "villa",
         select: "villaName villaAddress amenities rating owner",
         populate: { path: "owner", select: "name email" },
       })
-      .exec();
-    res.json({ success: true, rooms });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.status(200).json({
+      success: true,
+      rooms,
+      pagination: {
+        hasMore: page * limit < totalRooms,
+        currentPage: Number(page),
+        totalRooms,
+      },
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Inetrnal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // Delete Room
 export const deleteRoom = async (req, res) => {
