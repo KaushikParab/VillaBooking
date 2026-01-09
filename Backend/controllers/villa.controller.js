@@ -77,15 +77,25 @@ export const getAllVillas = async (req, res) => {
       page = 1,
       limit = 6,
       sort = "latest", // priceLow | priceHigh | rating | latest
+      location,
     } = req.query;
 
-    // -------- FILTER --------
     let filter = {};
 
+    
+    // -------- PRICE FILTER --------
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // -------- LOCATION FILTER --------
+    if (location) {
+      filter.villaAddress = {
+        $regex: location,
+        $options: "i", // case-insensitive
+      };
     }
 
     // -------- SORT --------

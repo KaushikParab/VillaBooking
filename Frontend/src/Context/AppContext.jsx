@@ -16,6 +16,7 @@ const AppContextProvider = ({ children }) => {
 
   // -------- VILLAS (PAGINATION) --------
   const [villaData, setVillaData] = useState([]);
+  const [location, setLocation] = useState("");
   const [villaPage, setVillaPage] = useState(1);
   const [villaHasMore, setVillaHasMore] = useState(true);
   const [villaLoading, setVillaLoading] = useState(false);
@@ -38,7 +39,7 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
-  // ================= FETCH VILLAS (PAGINATED) =================
+  // ================= FETCH VILLAS =================
   const fetchVillasData = async ({ minPrice, maxPrice, sort } = {}) => {
     if (villaLoading || !villaHasMore) return;
 
@@ -52,12 +53,13 @@ const AppContextProvider = ({ children }) => {
           minPrice,
           maxPrice,
           sort,
+          location,
         },
       });
 
       if (data.success) {
         setVillaData((prev) => [...prev, ...data.villas]);
-        setVillaHasMore(data.pagination.hasMore);
+        setVillaHasMore(data.pagination?.hasMore ?? false);
       } else {
         toast.error(data.message);
       }
@@ -68,7 +70,7 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
-  // ================= RESET VILLAS (FILTER / SORT CHANGE) =================
+  // ================= RESET VILLAS =================
   const resetVillas = () => {
     setVillaData([]);
     setVillaPage(1);
@@ -90,8 +92,10 @@ const AppContextProvider = ({ children }) => {
       });
 
       if (data.success) {
-        setRoomData((prev) => [...prev, ...data.rooms]);
-        setRoomHasMore(data.pagination.hasMore);
+        setRoomData((prev) =>
+          roomPage === 1 ? data.rooms : [...prev, ...data.rooms]
+        );
+        setRoomHasMore(data.pagination?.hasMore ?? false);
       }
     } catch (error) {
       toast.error(error.message);
@@ -100,19 +104,23 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
-  // ================= INITIAL LOAD =================
+  // ================= EFFECTS =================
   useEffect(() => {
     checkUserLoggedInOrNot();
   }, []);
 
-  // 🔥 This triggers villa fetch when page changes
   useEffect(() => {
     fetchVillasData();
-  }, [villaPage]);
+  }, [villaPage, location]);
 
   useEffect(() => {
     fetchRoomsData();
   }, [roomPage]);
+
+  useEffect(() => {
+    resetVillas();
+   // fetchVillasData();
+  }, [location]);
 
   const value = {
     navigate,
@@ -128,6 +136,8 @@ const AppContextProvider = ({ children }) => {
     villaHasMore,
     villaLoading,
     resetVillas,
+    location,
+    setLocation,
 
     // Rooms
     roomData,
@@ -138,7 +148,11 @@ const AppContextProvider = ({ children }) => {
     axios,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {children}
+    </AppContext.Provider>
+  );
 };
 
 export default AppContextProvider;
