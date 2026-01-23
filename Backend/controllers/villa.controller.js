@@ -1,4 +1,5 @@
 import Villa from "../models/villa.model.js";
+import Booking from "../models/booking.model.js";
 
 // ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
@@ -10,6 +11,7 @@ export const registerVilla = async (req, res) => {
       villaContactNo,
       villaAddress,
       rating,
+      guests,
       price,
       amenities,
     } = req.body;
@@ -20,8 +22,9 @@ export const registerVilla = async (req, res) => {
       !villaName ||
       !villaContactNo ||
       !villaAddress ||
-      !rating ||
-      !price ||
+      rating === undefined ||
+      guests === undefined ||
+      price === undefined ||
       !amenities ||
       !images ||
       images.length === 0
@@ -37,6 +40,7 @@ export const registerVilla = async (req, res) => {
       villaContactNo,
       villaAddress,
       rating,
+      guests,
       price,
       amenities,
       images,
@@ -78,11 +82,26 @@ export const getAllVillas = async (req, res) => {
       limit = 6,
       sort = "latest", // priceLow | priceHigh | rating | latest
       location,
+      guests,
+      checkIn,
+      checkOut,
     } = req.query;
 
     let filter = {};
 
-    
+    //-------- DATE RANGE VALIDATION --------
+    if (checkIn && checkOut) {
+      const inDate = new Date(checkIn);
+      const outDate = new Date(checkOut);
+
+      if (isNaN(inDate) || isNaN(outDate) || inDate >= outDate) {
+        return res.status(400).json({
+          success: false,
+          message: "Check-out date must be after check-in date",
+        });
+      }
+    }
+
     // -------- PRICE FILTER --------
     if (minPrice || maxPrice) {
       filter.price = {};
@@ -96,6 +115,22 @@ export const getAllVillas = async (req, res) => {
         $regex: location,
         $options: "i", // case-insensitive
       };
+    }
+
+    // -------- GUEST FILTER --------
+    if (guests) {
+      filter.guests = { $gte: Number(guests) };
+    }
+
+    /* ---------- DATE AVAILABILITY ---------- */
+    if (checkIn && checkOut) {
+      const unavailableVillas = await Booking.distinct("villa", {
+        status: { $ne: "cancelled" },
+        checkIn: { $lte: new Date(checkOut) },
+        checkOut: { $gte: new Date(checkIn) },
+      });
+
+      filter._id = { $nin: unavailableVillas };
     }
 
     // -------- SORT --------
