@@ -2,6 +2,8 @@ import { createContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
+import Cookies from "js-cookie";
+
 
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = "http://localhost:4000";
@@ -14,12 +16,25 @@ const AppContextProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [owner, setOwner] = useState(null);
 
+  // -------- FILTERS --------
+  const [location, setLocation] = useState("");
+  const [guests, setGuests] = useState("");
+  const [dates, setDates] = useState({
+    checkIn: "",
+    checkOut: "",
+  });
+  const [priceRange, setPriceRange] = useState({
+    minPrice: 0,
+    maxPrice: 3000,
+  });
+
   // -------- VILLAS (PAGINATION) --------
   const [villaData, setVillaData] = useState([]);
-  const [location, setLocation] = useState("");
   const [villaPage, setVillaPage] = useState(1);
   const [villaHasMore, setVillaHasMore] = useState(true);
   const [villaLoading, setVillaLoading] = useState(false);
+  const [searchVillas, setSearchVillas] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // -------- ROOMS (PAGINATION) --------
   const [roomData, setRoomData] = useState([]);
@@ -39,8 +54,32 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
+  // ================= Search VILLAS =================
+  const searchVillasFn = async (filters) => {
+    setIsSearching(true);
+    setVillaLoading(true);
+
+    try {
+      const { data } = await axios.get("/api/villa/get-all", {
+        params: {
+          page: 1,
+          limit: 6,
+          ...filters,
+        },
+      });
+
+      if (data.success) {
+        setSearchVillas(data.villas);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setVillaLoading(false);
+    }
+  };
+
   // ================= FETCH VILLAS =================
-  const fetchVillasData = async ({ minPrice, maxPrice, sort } = {}) => {
+  const fetchVillasData = async ({ search = false, sort } = {}) => {
     if (villaLoading || !villaHasMore) return;
 
     setVillaLoading(true);
@@ -50,16 +89,23 @@ const AppContextProvider = ({ children }) => {
         params: {
           page: villaPage,
           limit: 6,
-          minPrice,
-          maxPrice,
           sort,
           location,
+          guests,
+          checkIn: dates.checkIn,
+          checkOut: dates.checkOut,
+          minPrice: priceRange.minPrice,
+          maxPrice: priceRange.maxPrice,
         },
       });
 
       if (data.success) {
-        setVillaData((prev) => [...prev, ...data.villas]);
-        setVillaHasMore(data.pagination?.hasMore ?? false);
+        if (search) {
+          setSearchVillas(data.villas);
+          // setIsSearching(true);
+        } else {
+          setVillaData(data.villas);
+        }
       } else {
         toast.error(data.message);
       }
@@ -93,7 +139,7 @@ const AppContextProvider = ({ children }) => {
 
       if (data.success) {
         setRoomData((prev) =>
-          roomPage === 1 ? data.rooms : [...prev, ...data.rooms]
+          roomPage === 1 ? data.rooms : [...prev, ...data.rooms],
         );
         setRoomHasMore(data.pagination?.hasMore ?? false);
       }
@@ -110,17 +156,37 @@ const AppContextProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    fetchVillasData();
-  }, [villaPage, location]);
+    if (!isSearching) fetchVillasData();
+  }, [villaPage]);
 
   useEffect(() => {
     fetchRoomsData();
   }, [roomPage]);
 
   useEffect(() => {
-    resetVillas();
-   // fetchVillasData();
-  }, [location]);
+  const savedFilters = Cookies.get("villaFilters");
+  if (!savedFilters) return;
+
+  const filters = JSON.parse(savedFilters);
+
+  setLocation(filters.location || "");
+  setGuests(filters.guests || "");
+  setDates({
+    checkIn: filters.checkIn || "",
+    checkOut: filters.checkOut || "",
+  });
+  setPriceRange({
+    minPrice: filters.minPrice || 0,
+    maxPrice: filters.maxPrice || 3000,
+  });
+
+  setTimeout(() => {
+    searchVillasFn(filters);
+  }, 0);
+}, []);
+
+
+  
 
   const value = {
     navigate,
@@ -138,6 +204,16 @@ const AppContextProvider = ({ children }) => {
     resetVillas,
     location,
     setLocation,
+    guests,
+    setGuests,
+    setDates,
+    dates,
+    priceRange,
+    setPriceRange,
+    isSearching,
+    setIsSearching,
+    searchVillas,
+    searchVillasFn,
 
     // Rooms
     roomData,
@@ -148,11 +224,7 @@ const AppContextProvider = ({ children }) => {
     axios,
   };
 
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export default AppContextProvider;

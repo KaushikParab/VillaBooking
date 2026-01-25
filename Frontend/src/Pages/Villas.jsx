@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import VillaCard from "../Components/VillaCard";
 
 function Villas() {
   const [villaData, setVillaData] = useState([]);
@@ -100,31 +101,15 @@ function Villas() {
       </div>
 
       {/* ================= VILLAS GRID ================= */}
-      <div className="flex flex-wrap justify-center gap-4">
-        {villaData.length > 0 ? (
-          villaData.map((item) => (
-            <Link
-              key={item._id}
-              to={`/villa/${item._id}`}
-              className="relative group rounded-lg overflow-hidden"
-            >
-              <img
-                src={`http://localhost:4000/images/${item.images[0]}`}
-                alt=""
-                className="size-56 object-cover"
-              />
-
-              <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-70 transition-all flex flex-col justify-end p-4 text-white">
-                <h1 className="text-lg">{item.villaName}</h1>
-                <p className="text-sm">{item.villaAddress}</p>
-                <p className="text-lg">₹ {item.price}</p>
-              </div>
-            </Link>
-          ))
-        ) : (
-          !loading && <p className="text-white mt-6">No villas found</p>
-        )}
-      </div>
+      {villaData.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {villaData.map((villa) => (
+            <VillaCard key={villa._id} villa={villa} />
+          ))}
+        </div>
+      ) : (
+        !loading && <p className="text-white mt-6 text-center">No villas found</p>
+      )}
 
       {/* ================= LOADER ================= */}
       {hasMore && (

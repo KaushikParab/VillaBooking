@@ -10,6 +10,7 @@ const RegisterVilla = () => {
     villaContactNo: "",
     villaAddress: "",
     rating: "",
+    guests: "",
     price: "",
     amenities: "",
     images: [],
@@ -36,6 +37,7 @@ const RegisterVilla = () => {
     formData.append("villaContactNo", data.villaContactNo);
     formData.append("villaAddress", data.villaAddress);
     formData.append("rating", data.rating);
+    formData.append("guests", data.guests);
     formData.append("price", data.price);
     formData.append("amenities", data.amenities);
 
@@ -132,23 +134,43 @@ const RegisterVilla = () => {
           />
         </div>
 
-        {/* Get Villa Ratings */}
-        <div className="flex flex-col gap-1 w-32">
-          <label className="text-base font-medium">Rating</label>
-          <input
-            type="number"
-            name="rating"
-            value={data.rating}
-            onChange={handleChange}
-            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
-            required
-          />
+        <div className="grid grid-cols-2">
+          {/* Get Villa Ratings */}
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-base font-medium">Rating</label>
+            <input
+              min={0}
+              max={5}
+              type="number"
+              name="rating"
+              value={data.rating}
+              onChange={handleChange}
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
+              required
+            />
+          </div>
+
+          {/* Get Villa Guests */}
+          <div className="flex md:flex-col max-md:gap-2 max-md:items-center">
+            <label htmlFor="guests">Guests</label>
+            <input
+              min={1}
+              max={30}
+              id="guests"
+              name="guests"
+              type="number"
+              value={data.guests}
+              onChange={handleChange}
+              className="bg-[#1E1E1E/80] rounded border border-gray-500/40 px-3 py-1.5 mt-1.5 text-sm outline-none  max-w-16"
+            />
+          </div>
         </div>
 
         {/* Get Villa Price Per Night Per Person */}
         <div className="flex flex-col gap-1 w-32">
           <label className="text-base font-medium">Price</label>
           <input
+            min={0}
             type="number"
             name="price"
             value={data.price}
@@ -167,6 +189,7 @@ const RegisterVilla = () => {
             onChange={handleChange}
             rows={4}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
+            required
           />
         </div>
 
