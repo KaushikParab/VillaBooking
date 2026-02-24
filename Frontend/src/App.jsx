@@ -20,6 +20,8 @@ import AllRooms from "./Pages/owner/AllRooms";
 import AddRoom from "./Pages/owner/AddRoom";
 import Loader from "./Components/Loader";
 import SingleVilla from "./Pages/SingleVilla";
+import ForgotPassword from "./Pages/ForgotPassword";
+import ResetPassword from "./Pages/ResetPassword";
 
 function App() {
   const ownerPath = useLocation().pathname.includes("owner");
@@ -39,6 +41,8 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/my-bookings" element={<MyBookings />} />
         <Route path="/loader/:nextUrl" element={<Loader />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
 
         <Route path="/owner" element={owner ? <OwnerLayout /> : <Login />}>
           <Route index element={owner ? <AllVillas /> : <Login />} />
