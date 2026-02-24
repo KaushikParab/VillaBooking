@@ -9,6 +9,7 @@ import userRouter from "./routes/users.routes.js";
 import villaRouter from "./routes/villa.routes.js";
 import roomRouter from "./routes/room.routes.js";
 import bookingRouter from "./routes/booking.routes.js";
+import reviewRouter from "./routes/review.routes.js";
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/api/user", userRouter);
 app.use("/api/villa", villaRouter);
 app.use("/api/room", roomRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/reviews", reviewRouter);
 
 const PORT = process.env.PORT || 5000;
 

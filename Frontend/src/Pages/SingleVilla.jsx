@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { MdLocationPin } from "react-icons/md";
 import toast from "react-hot-toast";
+import TextReviews from "../Components/TextReviews";
 
 function SingleVilla() {
   const { villaData, roomData, axios, user } = useContext(AppContext);
@@ -42,11 +43,11 @@ function SingleVilla() {
     setBookingData({ ...bookingData, [e.target.name]: e.target.value });
   };
   useEffect(() => {
-      if (location.state?.bookingData) {
-        setBookingData(location.state.bookingData);
-        setIsAvailable(location.state.isAvailable || false);
-      }
-    }, [location.state]);
+    if (location.state?.bookingData) {
+      setBookingData(location.state.bookingData);
+      setIsAvailable(location.state.isAvailable || false);
+    }
+  }, [location.state]);
 
   /* ================= ROOMS ================= */
   const villaRooms = roomData.filter((room) => room.villa?._id === villa?._id);
@@ -106,11 +107,14 @@ function SingleVilla() {
         toast.error("Check-In date should be before Check-Out date");
         return;
       }
-      const { data } = await axios.post("/api/bookings/check-villa-availability", {
-        villa: villa._id,
-        checkInDate: bookingData.checkIn,
-        checkOutDate: bookingData.checkOut,
-      });
+      const { data } = await axios.post(
+        "/api/bookings/check-villa-availability",
+        {
+          villa: villa._id,
+          checkInDate: bookingData.checkIn,
+          checkOutDate: bookingData.checkOut,
+        },
+      );
       if (data.success) {
         if (data.isAvailable) {
           setIsAvailable(true);
@@ -390,9 +394,7 @@ function SingleVilla() {
                 <div className="border-t pt-4 mt-6">
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-[#ffffff]/90">Priceper Night</span>
-                    <span className="text-xl font-bold">
-                      ₹ {villa.price}
-                    </span>
+                    <span className="text-xl font-bold">₹ {villa.price}</span>
                   </div>
                 </div>
                 <button
@@ -405,6 +407,10 @@ function SingleVilla() {
             </div>
           </div>
         </div>
+      </div>
+      {/* ================= REVIEWS ================= */}
+      <div className="mt-12">
+        <TextReviews />
       </div>
     </div>
   );

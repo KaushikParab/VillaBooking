@@ -12,7 +12,7 @@ function Home() {
       <SearchResults />
       <MostPicked/>
       <PopularRooms/>
-      <TextReviews/>
+      
     </div>
   )
 }
