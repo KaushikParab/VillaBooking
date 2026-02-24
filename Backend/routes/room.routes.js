@@ -7,6 +7,7 @@ import {
   deleteRoom,
   getAllRooms,
   getOwnerRooms,
+  getPopularRooms,
 } from "../controllers/room.controller.js";
 import { upload } from "../config/multer.js";
 
@@ -22,6 +23,7 @@ roomRouter.post(
 
 roomRouter.get("/get", isAuthenticated, isOwner, getOwnerRooms);
 roomRouter.get("/get-all", getAllRooms);
+roomRouter.get("/popular", getPopularRooms);
 roomRouter.delete("/delete/:roomId", isAuthenticated, isOwner, deleteRoom);
 
 export default roomRouter;

@@ -4,7 +4,6 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import Cookies from "js-cookie";
 
-
 axios.defaults.withCredentials = true;
 axios.defaults.baseURL = "http://localhost:4000";
 
@@ -35,12 +34,16 @@ const AppContextProvider = ({ children }) => {
   const [villaLoading, setVillaLoading] = useState(false);
   const [searchVillas, setSearchVillas] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [popularVillas, setPopularVillas] = useState([]);
+  const [popularVillasLoading, setPopularVillasLoading] = useState(false);
 
   // -------- ROOMS (PAGINATION) --------
   const [roomData, setRoomData] = useState([]);
   const [roomPage, setRoomPage] = useState(1);
   const [roomHasMore, setRoomHasMore] = useState(true);
   const [roomLoading, setRoomLoading] = useState(false);
+  const [popularRooms, setPopularRooms] = useState([]);
+  const [popularRoomsLoading, setPopularRoomsLoading] = useState(false);
 
   // ================= AUTH CHECK =================
   const checkUserLoggedInOrNot = async () => {
@@ -150,7 +153,42 @@ const AppContextProvider = ({ children }) => {
     }
   };
 
+  const getPopularVillas = async () => {
+    try {
+      setPopularVillasLoading(true);
+      const { data } = await axios.get("/api/villa/popular");
+
+      if (data.success) {
+        setPopularVillas(data.villas);
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setPopularVillasLoading(false);
+    }
+  };
+
+  const getPopularRooms = async () => {
+    try {
+      setPopularRoomsLoading(true);
+      const { data } = await axios.get("/api/room/popular");
+
+      if (data.success) {
+        setPopularRooms(data.rooms);
+      }
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setPopularRoomsLoading(false);
+    }
+  };
+
   // ================= EFFECTS =================
+  useEffect(() => {
+    getPopularRooms();
+    getPopularVillas();
+  }, []);
+
   useEffect(() => {
     checkUserLoggedInOrNot();
   }, []);
@@ -164,29 +202,26 @@ const AppContextProvider = ({ children }) => {
   }, [roomPage]);
 
   useEffect(() => {
-  const savedFilters = Cookies.get("villaFilters");
-  if (!savedFilters) return;
+    const savedFilters = Cookies.get("villaFilters");
+    if (!savedFilters) return;
 
-  const filters = JSON.parse(savedFilters);
+    const filters = JSON.parse(savedFilters);
 
-  setLocation(filters.location || "");
-  setGuests(filters.guests || "");
-  setDates({
-    checkIn: filters.checkIn || "",
-    checkOut: filters.checkOut || "",
-  });
-  setPriceRange({
-    minPrice: filters.minPrice || 0,
-    maxPrice: filters.maxPrice || 3000,
-  });
+    setLocation(filters.location || "");
+    setGuests(filters.guests || "");
+    setDates({
+      checkIn: filters.checkIn || "",
+      checkOut: filters.checkOut || "",
+    });
+    setPriceRange({
+      minPrice: filters.minPrice || 0,
+      maxPrice: filters.maxPrice || 3000,
+    });
 
-  setTimeout(() => {
-    searchVillasFn(filters);
-  }, 0);
-}, []);
-
-
-  
+    setTimeout(() => {
+      searchVillasFn(filters);
+    }, 0);
+  }, []);
 
   const value = {
     navigate,
@@ -214,12 +249,16 @@ const AppContextProvider = ({ children }) => {
     setIsSearching,
     searchVillas,
     searchVillasFn,
+    popularVillas,
+    popularVillasLoading,
 
     // Rooms
     roomData,
     setRoomPage,
     roomHasMore,
     roomLoading,
+    popularRooms,
+    popularRoomsLoading,
 
     axios,
   };

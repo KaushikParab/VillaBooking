@@ -189,3 +189,59 @@ export const deleteVilla = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+
+// ================= MOST POPULAR VILLAS =================
+export const getPopularVillas = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const popularVillas = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sevenDaysAgo },
+          status: { $ne: "cancelled" },
+        },
+      },
+      {
+        $group: {
+          _id: "$villa",
+          totalBookings: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { totalBookings: -1 },
+      },
+      {
+        $limit: 4,
+      },
+      {
+        $lookup: {
+          from: "villas",
+          localField: "_id",
+          foreignField: "_id",
+          as: "villa",
+        },
+      },
+      {
+        $unwind: "$villa",
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      villas: popularVillas.map((v) => ({
+        ...v.villa,
+        totalBookings: v.totalBookings,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch popular villas",
+    });
+  }
+};

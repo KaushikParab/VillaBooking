@@ -1,4 +1,6 @@
 import Room from "../models/room.model.js";
+import Booking from "../models/booking.model.js";
+
 
 // add a new Room
 export const addRoom = async (req, res) => {
@@ -102,5 +104,71 @@ export const deleteRoom = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+// ================= MOST POPULAR ROOMS =================
+export const getPopularRooms = async (req, res) => {
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const popularRooms = await Booking.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: sevenDaysAgo },
+          status: { $ne: "cancelled" },
+          room: { $ne: null }, // only room bookings
+        },
+      },
+      {
+        $group: {
+          _id: "$room",
+          totalBookings: { $sum: 1 },
+          lastBookingAt: { $max: "$createdAt" },
+        },
+      },
+      {
+        $sort: {
+          totalBookings: -1,
+          lastBookingAt: -1,
+        },
+      },
+      { $limit: 4 },
+      {
+        $lookup: {
+          from: "rooms",
+          localField: "_id",
+          foreignField: "_id",
+          as: "room",
+        },
+      },
+      { $unwind: "$room" },
+      {
+        $lookup: {
+          from: "villas",
+          localField: "room.villa",
+          foreignField: "_id",
+          as: "villa",
+        },
+      },
+      { $unwind: "$villa" },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      rooms: popularRooms.map((r) => ({
+        ...r.room,
+        villa: r.villa,
+        totalBookings: r.totalBookings,
+      })),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch popular rooms",
+    });
   }
 };

@@ -7,6 +7,7 @@ import {
   getAllVillas,
   getOwnerVillas,
   registerVilla,
+  getPopularVillas,
 } from "../controllers/villa.controller.js";
 import { upload } from "../config/multer.js";
 
@@ -22,6 +23,7 @@ villaRouter.post(
 
 villaRouter.get("/get", isAuthenticated, isOwner, getOwnerVillas);
 villaRouter.get("/get-all", getAllVillas);
+villaRouter.get("/popular", getPopularVillas);
 villaRouter.delete("/delete/:villaId", isAuthenticated, isOwner, deleteVilla);
 
 export default villaRouter;
