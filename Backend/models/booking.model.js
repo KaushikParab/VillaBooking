@@ -98,10 +98,9 @@ bookingSchema.index({
   checkOut: 1,
 });
 
-// Faster queries for user bookings
+
 bookingSchema.index({ user: 1, createdAt: -1 });
 
-// Faster owner villa bookings
 bookingSchema.index({ villa: 1, createdAt: -1 });
 
 const Booking = mongoose.model("Booking", bookingSchema);

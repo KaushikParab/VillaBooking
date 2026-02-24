@@ -1,20 +1,14 @@
 import { useContext, useEffect, useState } from "react";
-import {
-  MapPin,
-  Calendar,
-  Users,
-  CheckCircle,
-  Clock,
-  XCircle,
-} from "lucide-react";
+import { MapPin, Users, CheckCircle, Clock, XCircle } from "lucide-react";
 import { AppContext } from "../Context/AppContext.jsx";
 import toast from "react-hot-toast";
 
 function MyBookings() {
-  const { axios, navigate } = useContext(AppContext);
-
+  const [cancellingId, setCancellingId] = useState(null);
+  const { axios } = useContext(AppContext);
   const [bookingData, setBookingData] = useState([]);
 
+  // ================= FETCH BOOKINGS =================
   const fetchMyBookings = async () => {
     try {
       const { data } = await axios.get("/api/bookings/user");
@@ -28,13 +22,69 @@ function MyBookings() {
     }
   };
 
-  const handlePayment = async (bookingId) => {
+  // ================= PAY NOW (RAZORPAY) =================
+const handlePayment = async (bookingId) => {
+  try {
+    const { data } = await axios.post("/api/bookings/razorpay-order", {
+      bookingId,
+    });
+
+    if (!data.success) {
+      toast.error("Failed to create order");
+      return;
+    }
+
+    const options = {
+      key: data.key,
+      amount: data.order.amount,
+      currency: "INR",
+      order_id: data.order.id,
+      name: "Villa Booking",
+      description: "Complete your booking payment",
+
+      handler: async function (response) {
+        const verifyRes = await axios.post(
+          "/api/bookings/razorpay-verify",
+          {
+            ...response,
+            bookingId,
+          }
+        );
+
+        if (verifyRes.data.success) {
+          toast.success("Payment Successful!");
+          fetchMyBookings();
+        } else {
+          toast.error("Payment verification failed");
+        }
+      },
+
+      prefill: {
+        name: "Guest",
+      },
+
+      theme: {
+        color: "#3399cc",
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  } catch (error) {
+    toast.error(error.message);
+  }
+};
+
+  // ================= PAY AT VILLA =================
+  const handlePayAtVilla = async (bookingId) => {
     try {
-      const { data } = await axios.post("/api/bookings/stripe-payment", {
+      const { data } = await axios.post("/api/bookings/pay-at-villa", {
         bookingId,
       });
+
       if (data.success) {
-        window.location.href = data.url;
+        toast.success(data.message);
+        fetchMyBookings();
       } else {
         toast.error(data.message);
       }
@@ -43,13 +93,38 @@ function MyBookings() {
     }
   };
 
+  // ================= CANCEL BOOKING =================
+  const handleCancelBooking = async (bookingId) => {
+    const confirmCancel = window.confirm(
+      "Are you sure you want to cancel this booking?",
+    );
+
+    if (!confirmCancel) return;
+
+    setCancellingId(bookingId);
+
+    try {
+      const { data } = await axios.post("/api/bookings/cancel", {
+        bookingId,
+      });
+
+      if (data.success) {
+        toast.success("Booking cancelled successfully");
+        fetchMyBookings();
+      } else {
+        toast.error(data.message);
+        setCancellingId(null);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      setCancellingId(null);
+    }
+  };
+
+  // ================= EFFECT =================
   useEffect(() => {
     fetchMyBookings();
-
-    const interval = setInterval(() => {
-      fetchMyBookings();
-    }, 5000); // every 5 seconds
-
+    const interval = setInterval(fetchMyBookings, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -62,7 +137,7 @@ function MyBookings() {
       case "cancelled":
         return "text-red-500";
       default:
-        return "text-gray-500";
+        return "text-gray-400";
     }
   };
 
@@ -78,118 +153,147 @@ function MyBookings() {
         return Clock;
     }
   };
+  const canCancelBooking = (booking) => {
+    if (booking.status === "cancelled") return false;
+
+    if (booking.status === "confirmed" && booking.paymentMethod === "Razorpay") {
+      return false;
+    }
+
+    const now = new Date();
+    const checkIn = new Date(booking.checkIn);
+    const diffInHours = (checkIn - now) / (1000 * 60 * 60);
+
+    return diffInHours >= 24;
+  };
 
   return (
-    <div className="min-h-screen text-[#ffffff] py-10">
+    <div className="min-h-screen text-white py-10">
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">My Booking</h1>
-          <p className="text-[#ffffff]/90 text-lg">
-            Here are the villa bookings. You can view details and manage your
-            reservations.
+          <h1 className="text-4xl font-bold mb-4">My Bookings</h1>
+          <p className="text-white/80 text-lg">
+            View and manage your reservations
           </p>
         </div>
 
         <div className="bg-[#1E1E1E] rounded-2xl shadow-lg overflow-hidden">
-          <div className="hidden md:grid md:grid-cols-12 bg-[#1E1E1E] px-6 py-4 border-b border-gray-400 font-semibold text-[#ffffff]">
-            <div className="col-span-4 text-xl">Villa & Room</div>
-            <div className="col-span-3 text-xl">Dates</div>
-            <div className="col-span-2 text-xl">Payment</div>
-            <div className="col-span-2 text-xl">Status</div>
+          {/* HEADER */}
+          <div className="hidden md:grid md:grid-cols-12 px-6 py-4 border-b border-gray-500 font-semibold">
+            <div className="col-span-4">Villa & Room</div>
+            <div className="col-span-3">Dates</div>
+            <div className="col-span-3">Payment</div>
+            <div className="col-span-2">Status</div>
           </div>
 
-          <div className="divide-y divide-gray-300">
+          <div className="divide-y divide-gray-600">
             {bookingData.map((booking) => {
-              const Icon = getStatusIcon(booking.status);
+              const StatusIcon = getStatusIcon(booking.status);
 
               return (
                 <div
                   key={booking._id}
-                  className="p-6 hover:bg-gray-800 transition-colors"
+                  className="p-6 hover:bg-gray-800 transition"
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start md:items-center">
-                    {/* Villa & Room */}
-                    <div className="col-span-1 md:col-span-4">
-                      <div className="flex gap-4">
-                        <img
-                          src={
-                            booking.villa?.images?.[0]
-                              ? `http://localhost:4000/images/${booking.villa.images[0]}`
-                              : "https://via.placeholder.com/150"
-                          }
-                          alt={booking.room?.roomType || "Room"}
-                          className="w-20 h-16 md:w-24 md:h-20 rounded-lg object-cover flex-shrink-0"
-                        />
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    {/* VILLA & ROOM */}
+                    <div className="md:col-span-4 flex gap-4">
+                      <img
+                        src={
+                          booking.villa?.images?.[0]
+                            ? `http://localhost:4000/images/${booking.villa.images[0]}`
+                            : "https://via.placeholder.com/150"
+                        }
+                        className="w-24 h-20 rounded-lg object-cover"
+                        alt="villa"
+                      />
 
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-[#ffffff] text-lg mb-1">
-                            {booking.villa?.villaName || "Villa Deleted"}
-                          </h3>
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {booking.villa?.villaName || "Villa"}
+                        </h3>
+                        <p className="text-blue-500">
+                          {booking.room?.roomType || ""}
+                        </p>
 
-                          <p className="text-blue-600 font-medium mb-1">
-                            {booking.room?.roomType || ""}
-                          </p>
+                        <div className="flex items-center text-sm text-gray-400 gap-1">
+                          <MapPin className="w-3 h-3" />
+                          {booking.villa?.villaAddress}
+                        </div>
 
-                          <div className="flex items-center gap-1 text-gray-400 text-sm mb-1">
-                            <MapPin className="w-3 h-3" />
-                            <span className="truncate">
-                              {booking.villa?.villaAddress ||
-                                "Address not available"}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1 text-gray-400 text-sm">
-                            <Users className="w-3 h-3" />
-                            <span>
-                              {booking.persons} Guest
-                              {booking.persons > 1 ? "s" : ""}
-                            </span>
-                          </div>
+                        <div className="flex items-center text-sm text-gray-400 gap-1">
+                          <Users className="w-3 h-3" />
+                          {booking.persons} Guests
                         </div>
                       </div>
                     </div>
 
-                    {/* Dates */}
-                    <div className="col-span-1 md:col-span-3 space-y-2">
-                      <div>
-                        <p className="text-sm text-gray-400">Check-in</p>
-                        <p className="font-medium text-gray-100">
-                          {new Date(booking.checkIn).toDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-400">Check-out</p>
-                        <p className="font-medium text-gray-100">
-                          {new Date(booking.checkOut).toDateString()}
-                        </p>
-                      </div>
+                    {/* DATES */}
+                    <div className="md:col-span-3 text-sm">
+                      <p>
+                        <span className="text-gray-400">Check-in:</span>{" "}
+                        {new Date(booking.checkIn).toDateString()}
+                      </p>
+                      <p>
+                        <span className="text-gray-400">Check-out:</span>{" "}
+                        {new Date(booking.checkOut).toDateString()}
+                      </p>
                     </div>
 
-                    {/* Payment */}
-                    <div className="col-span-1 md:col-span-2">
-                      <p className="font-bold text-lg text-gray-50">
+                    {/* PAYMENT */}
+                    <div className="md:col-span-3 flex items-start gap-6">
+                      {/* Total Price */}
+                      <p className="font-bold text-lg">
                         ₹ {booking.totalPrice}
                       </p>
-                      {!booking.isPaid && (
-                        <button
-                          onClick={() => handlePayment(booking._id)}
-                          className="text-sm text-red-400 underline cursor-pointer"
-                        >
-                          Pay Now
-                        </button>
-                      )}
-                    </div>
 
-                    {/* Status */}
-                    <div className="col-span-1 md:col-span-2 flex items-center gap-2">
-                      <Icon
-                        className={`w-4 h-4 stroke-[3] ${getStatusTextColor(
-                          booking.status
+                      {/* Buttons */}
+                      <div className="flex flex-col space-y-1">
+                        {!booking.isPaid && booking.status === "pending" && (
+                          <button
+                            onClick={() => handlePayment(booking._id)}
+                            className="text-green-600 hover:text-white hover:bg-green-700 px-3 py-1 rounded-md transition"
+                          >
+                            Pay Now
+                          </button>
+                        )}
+
+                        {!booking.isPaid && booking.status === "pending" && (
+                          <button
+                            onClick={() => handlePayAtVilla(booking._id)}
+                            className="text-blue-500 hover:text-white hover:bg-blue-600 px-3 py-1 rounded-md transition"
+                          >
+                            Pay at Villa
+                          </button>
+                        )}
+
+                        {canCancelBooking(booking) && (
+                          <button
+                            onClick={() => handleCancelBooking(booking._id)}
+                            disabled={cancellingId === booking._id}
+                            className={`text-sm px-3 py-1 rounded-md transition-all duration-200 ${
+                              cancellingId === booking._id
+                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                : "text-rose-600 hover:text-white hover:bg-rose-600 hover:scale-105"
+                            }`}
+                          >
+                            {cancellingId === booking._id
+                              ? "Cancelling..."
+                              : "Cancel Booking"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* STATUS */}
+                    <div className="md:col-span-2 flex items-center gap-2">
+                      <StatusIcon
+                        className={`w-4 h-4 ${getStatusTextColor(
+                          booking.status,
                         )}`}
                       />
                       <span
                         className={`capitalize ${getStatusTextColor(
-                          booking.status
+                          booking.status,
                         )}`}
                       >
                         {booking.status}
