@@ -38,6 +38,7 @@ function SingleVilla() {
     persons: 1,
   });
   const [isAvailable, setIsAvailable] = useState(false);
+  const [pricePreview, setPricePreview] = useState(null);
 
   const onChangeHandler = (e) => {
     setBookingData({ ...bookingData, [e.target.name]: e.target.value });
@@ -48,6 +49,35 @@ function SingleVilla() {
       setIsAvailable(location.state.isAvailable || false);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    fetchPricePreview();
+  }, [bookingData.checkIn, bookingData.checkOut, bookingData.persons]);
+
+  const fetchPricePreview = async () => {
+    if (!bookingData.checkIn || !bookingData.checkOut) return;
+
+    try {
+      const { data } = await axios.post("/api/bookings/preview-price", {
+        villa: villa._id,
+        checkInDate: bookingData.checkIn,
+        checkOutDate: bookingData.checkOut,
+        persons: bookingData.persons,
+      });
+
+      if (data.success) {
+        if (!data.isAvailable) {
+          toast.error("Villa not available for selected dates");
+          setPricePreview(null);
+          return;
+        }
+
+        setPricePreview(data.priceDetails);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   /* ================= ROOMS ================= */
   const villaRooms = roomData.filter((room) => room.villa?._id === villa?._id);
@@ -392,10 +422,46 @@ function SingleVilla() {
                 </div>
 
                 <div className="border-t pt-4 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[#ffffff]/90">Priceper Night</span>
-                    <span className="text-xl font-bold">₹ {villa.price}</span>
-                  </div>
+                  {pricePreview ? (
+                    <>
+                      <div className="flex justify-between mb-2">
+                        <span>Base Price</span>
+                        <span>₹ {pricePreview.basePrice}</span>
+                      </div>
+
+                      {/* ADD THIS NEW DISCOUNT ROW */}
+                      {pricePreview.discountPercent > 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span>Discount</span>
+                          <span className="text-blue-400 font-medium">
+                            {pricePreview.discountPercent}% Off
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between mb-2">
+                        <span>Nights</span>
+                        <span>{pricePreview.nights}</span>
+                      </div>
+
+                      <div className="flex justify-between mb-2">
+                        <span>Guests</span>
+                        <span>{pricePreview.persons}</span>
+                      </div>
+
+                      <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">
+                        <span>Total Price</span>
+                        <span className="text-green-400">
+                          ₹ {pricePreview.totalPrice}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <span>Price per Night</span>
+                      <span>₹ {villa.price}</span>
+                    </div>
+                  )}
                 </div>
                 <button
                   className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white`}

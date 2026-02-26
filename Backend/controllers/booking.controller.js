@@ -8,30 +8,38 @@ import crypto from "crypto";
 
 // ================= EMAIL HELPER =================
 const sendBookingEmail = async (booking, subject, title) => {
-  await transporter.sendMail({
-    from: process.env.SENDER_EMAIL,
-    to: booking.user.email,
-    subject,
-    html: `
-      <h2>${title}</h2>
-      <hr/>
-      <p><strong>Booking ID:</strong> ${booking._id}</p>
-      <p><strong>Villa:</strong> ${booking.villa?.villaName || "Villa"}</p>
-      <p><strong>Room:</strong> ${booking.room?.roomType || "Entire Villa"}</p>
-      <p><strong>Check-in:</strong> ${new Date(
-        booking.checkIn,
-      ).toDateString()}</p>
-      <p><strong>Check-out:</strong> ${new Date(
-        booking.checkOut,
-      ).toDateString()}</p>
-      <p><strong>Guests:</strong> ${booking.persons}</p>
-      <p><strong>Total Price:</strong> ₹ ${booking.totalPrice}</p>
-      <p><strong>Payment Method:</strong> ${booking.paymentMethod}</p>
-      <p><strong>Status:</strong> ${booking.status}</p>
-      <br/>
-      <p>Thank you for choosing us ❤️</p>
-    `,
-  });
+  try {
+    if (!booking.user || !booking.villa) return;
+
+    const owner = await User.findById(booking.villa.owner);
+
+    const recipients = [booking.user.email, owner?.email].filter(Boolean);
+
+    await transporter.sendMail({
+      from: process.env.SENDER_EMAIL,
+      to: recipients.join(","),
+      subject,
+      html: `
+        <h2>${title}</h2>
+        <hr/>
+        <p><strong>Booking ID:</strong> ${booking._id}</p>
+        <p><strong>Villa:</strong> ${booking.villa?.villaName || "Villa"}</p>
+        <p><strong>Room:</strong> ${booking.room?.roomType || "Entire Villa"}</p>
+        <p><strong>Check-in:</strong> ${new Date(
+          booking.checkIn,
+        ).toDateString()}</p>
+        <p><strong>Check-out:</strong> ${new Date(
+          booking.checkOut,
+        ).toDateString()}</p>
+        <p><strong>Guests:</strong> ${booking.persons}</p>
+        <p><strong>Total Price:</strong> ₹ ${booking.totalPrice}</p>
+        <p><strong>Payment Method:</strong> ${booking.paymentMethod}</p>
+        <p><strong>Status:</strong> ${booking.status}</p>
+      `,
+    });
+  } catch (error) {
+    console.log("Email sending failed:", error.message);
+  }
 };
 
 export const checkAvailability = async ({
@@ -94,6 +102,37 @@ export const checkVillaAvailability = async (req, res) => {
   }
 };
 
+// -----------DYNAMIC DAY-WISE PRICE CALCULATOR-------------
+const calculateDynamicPrice = ({
+  basePrice,
+  persons,
+  checkIn,
+  checkOut,
+  discountPercent = 10,
+}) => {
+  let total = 0;
+
+  const current = new Date(checkIn);
+
+  while (current < checkOut) {
+    const day = current.getDay(); // 0=Sun, 6=Sat
+
+    const isWeekend = day === 0 || day === 6;
+
+    let priceForThisNight = basePrice;
+
+    if (!isWeekend) {
+      priceForThisNight = basePrice - (basePrice * discountPercent) / 100;
+    }
+
+    total += priceForThisNight * persons;
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return Math.round(total);
+};
+
 /* ================================
    BOOK ROOM OR ENTIRE VILLA
 ================================ */
@@ -143,7 +182,14 @@ export const bookRoom = async (req, res) => {
         });
       }
       const pricePerPersonPerNight = Number(villaData.price);
-      const totalPrice = pricePerPersonPerNight * persons * nights;
+
+      const totalPrice = calculateDynamicPrice({
+        basePrice: pricePerPersonPerNight,
+        persons,
+        checkIn,
+        checkOut,
+        discountPercent: 15,
+      });
 
       const booking = await Booking.create({
         user: id,
@@ -222,7 +268,13 @@ export const bookRoom = async (req, res) => {
       });
     }
 
-    const totalPrice = roomData.pricePerNight * nights * persons;
+    const totalPrice = calculateDynamicPrice({
+      basePrice: roomData.pricePerNight,
+      persons,
+      checkIn,
+      checkOut,
+      discountPercent: 15,
+    });
 
     const booking = await Booking.create({
       user: id,
@@ -482,5 +534,97 @@ export const cancelBooking = async (req, res) => {
       success: false,
       message: "Server error",
     });
+  }
+};
+
+
+/* ================================
+   PREVIEW DYNAMIC PRICE
+================================ */
+export const previewBookingPrice = async (req, res) => {
+  try {
+    const { villa, room, checkInDate, checkOutDate, persons } = req.body;
+
+    if (!checkInDate || !checkOutDate || !persons) {
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
+    }
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+
+    if (checkIn >= checkOut) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date selection",
+      });
+    }
+
+    let basePrice = 0;
+    let villaId;
+
+    // ===== VILLA BOOKING =====
+    if (villa) {
+      const villaData = await Villa.findById(villa);
+      if (!villaData)
+        return res.status(404).json({ success: false, message: "Villa not found" });
+
+      basePrice = Number(villaData.price);
+      villaId = villaData._id;
+    }
+
+    // ===== ROOM BOOKING =====
+    if (room) {
+      const roomData = await Room.findById(room).populate("villa");
+      if (!roomData)
+        return res.status(404).json({ success: false, message: "Room not found" });
+
+      basePrice = roomData.pricePerNight;
+      villaId = roomData.villa._id;
+    }
+
+    // ===== CHECK AVAILABILITY =====
+    const isAvailable = await checkAvailability({
+      villa: villaId,
+      checkInDate,
+      checkOutDate,
+    });
+
+    if (!isAvailable) {
+      return res.json({
+        success: true,
+        isAvailable: false,
+      });
+    }
+
+    const nights = Math.ceil(
+      (checkOut - checkIn) / (1000 * 60 * 60 * 24)
+    );
+
+    const discountPercent = 15;
+    const totalPrice = calculateDynamicPrice({
+      basePrice,
+      persons,
+      checkIn,
+      checkOut,
+      discountPercent,
+    });
+
+    return res.json({
+      success: true,
+      isAvailable: true,
+      priceDetails: {
+        basePrice,
+        persons,
+        nights,
+        totalPrice,
+        discountPercent,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Server error" });
   }
 };

@@ -45,9 +45,38 @@ function SingleRoom() {
     persons: 1,
   });
   const [isAvailable, setIsAvailable] = useState(false);
+  const [pricePreview, setPricePreview] = useState(null);
 
   const onChangeHandler = (e) => {
     setBookingData({ ...bookingData, [e.target.name]: e.target.value });
+  };
+
+  useEffect(() => {
+    fetchPricePreview();
+  }, [bookingData.checkIn, bookingData.checkOut, bookingData.persons]);
+
+  const fetchPricePreview = async () => {
+    if (!bookingData.checkIn || !bookingData.checkOut) return;
+
+    try {
+      const { data } = await axios.post("/api/bookings/preview-price", {
+        room: room._id,
+        checkInDate: bookingData.checkIn,
+        checkOutDate: bookingData.checkOut,
+        persons: bookingData.persons,
+      });
+
+      if (data.success) {
+        if (!data.isAvailable) {
+          setPricePreview(null);
+          return;
+        }
+
+        setPricePreview(data.priceDetails);
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const getAmenityIcon = (amenity) => {
@@ -84,17 +113,20 @@ function SingleRoom() {
         toast.error("Check-In date should be before Check-Out date");
         return;
       }
-      const { data } = await axios.post("/api/bookings/check-availability", {
+      const { data } = await axios.post("/api/bookings/preview-price", {
         room: room._id,
         checkInDate: bookingData.checkIn,
         checkOutDate: bookingData.checkOut,
+        persons: bookingData.persons,
       });
       if (data.success) {
         if (data.isAvailable) {
           setIsAvailable(true);
+          setPricePreview(data.priceDetails);
           toast.success("Room is available ✅");
         } else {
           setIsAvailable(false);
+          setPricePreview(null);
           toast.error("Room is not available ❌");
         }
       }
@@ -324,11 +356,57 @@ function SingleRoom() {
                 </div>
 
                 <div className="border-t pt-4 mt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[#ffffff]/90">Priceper Night</span>
-                    <span className="text-xl font-bold">
-                      ₹ {room.pricePerNight}
-                    </span>
+                  <div className="border-t pt-4 mt-6">
+                    {pricePreview ? (
+                      <>
+                        <div className="flex justify-between mb-2">
+                          <span>Base Price</span>
+                          <span>₹ {pricePreview.basePrice}</span>
+                        </div>
+
+                        {pricePreview.discountPercent > 0 && (
+                          <div className="flex justify-between mb-2">
+                            <span>Discount</span>
+                            <span className="text-blue-400 font-medium">
+                              {pricePreview.discountPercent}% Off
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between mb-2">
+                          <span>Nights</span>
+                          <span>{pricePreview.nights}</span>
+                        </div>
+
+                        <div className="flex justify-between mb-2">
+                          <span>Guests</span>
+                          <span>{pricePreview.persons}</span>
+                        </div>
+
+                        {pricePreview.discountPercent > 0 && (
+                          <div className="flex justify-between mb-2">
+                            <span>Discount</span>
+                            <span className="text-blue-400 font-medium">
+                              {pricePreview.discountPercent}% Off
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">
+                          <span>Total Price</span>
+                          <span className="text-green-400">
+                            ₹ {pricePreview.totalPrice}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex justify-between items-center mb-4">
+                        <span>Price per Night</span>
+                        <span className="text-xl font-bold">
+                          ₹ {room.pricePerNight}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button

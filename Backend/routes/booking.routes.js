@@ -11,6 +11,7 @@ import {
   cancelBooking,
   razorpayPayment,
   verifyRazorpayPayment,
+  previewBookingPrice,
 } from "../controllers/booking.controller.js";
 const bookingRouter = express.Router();
 
@@ -23,5 +24,6 @@ bookingRouter.post("/pay-at-villa", isAuthenticated, payAtVilla);
 bookingRouter.post("/cancel", isAuthenticated, cancelBooking);
 bookingRouter.post("/razorpay-order", isAuthenticated, razorpayPayment);
 bookingRouter.post("/razorpay-verify", isAuthenticated, verifyRazorpayPayment);
+bookingRouter.post("/preview-price", previewBookingPrice);
 
 export default bookingRouter;
