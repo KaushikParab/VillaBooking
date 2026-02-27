@@ -1,20 +1,19 @@
-import { Warehouse, CalendarArrowDown, LayoutDashboard, Bed } from "lucide-react";
+import { Warehouse, CalendarArrowDown, Bed,TrendingUp  } from "lucide-react";
 import { useContext } from "react";
 import { AppContext } from "../../Context/AppContext";
 import toast from "react-hot-toast";
-import { assets } from "../../assets/assets";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 function OwnerLayout() {
   const location = useLocation();
 
-  const dashboardicon = <LayoutDashboard className="w-6 h-6" />;
   const { owner, setOwner, axios } = useContext(AppContext);
 
   const sidebarLinks = [
     { name: "Villas", path: "/owner", icon: <Warehouse /> },
     { name: "Rooms", path: "/owner/rooms", icon: <Bed /> },
     { name: "Bookings", path: "/owner/bookings", icon: <CalendarArrowDown /> },
+    { name: "Earnings", path: "/owner/earnings", icon: <TrendingUp /> },
   ];
 
   const navigate = useNavigate();

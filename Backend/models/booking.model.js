@@ -98,6 +98,7 @@ bookingSchema.index({
   checkOut: 1,
 });
 
+bookingSchema.index({ villa: 1, status: 1, createdAt: 1 });
 
 bookingSchema.index({ user: 1, createdAt: -1 });
 

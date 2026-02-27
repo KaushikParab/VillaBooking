@@ -25,5 +25,6 @@ villaRouter.get("/get", isAuthenticated, isOwner, getOwnerVillas);
 villaRouter.get("/get-all", getAllVillas);
 villaRouter.get("/popular", getPopularVillas);
 villaRouter.delete("/delete/:villaId", isAuthenticated, isOwner, deleteVilla);
+villaRouter.get("/owner", isAuthenticated, isOwner, getOwnerVillas);
 
 export default villaRouter;

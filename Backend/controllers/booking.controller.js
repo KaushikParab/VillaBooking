@@ -537,7 +537,6 @@ export const cancelBooking = async (req, res) => {
   }
 };
 
-
 /* ================================
    PREVIEW DYNAMIC PRICE
 ================================ */
@@ -569,7 +568,9 @@ export const previewBookingPrice = async (req, res) => {
     if (villa) {
       const villaData = await Villa.findById(villa);
       if (!villaData)
-        return res.status(404).json({ success: false, message: "Villa not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Villa not found" });
 
       basePrice = Number(villaData.price);
       villaId = villaData._id;
@@ -579,7 +580,9 @@ export const previewBookingPrice = async (req, res) => {
     if (room) {
       const roomData = await Room.findById(room).populate("villa");
       if (!roomData)
-        return res.status(404).json({ success: false, message: "Room not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Room not found" });
 
       basePrice = roomData.pricePerNight;
       villaId = roomData.villa._id;
@@ -599,9 +602,7 @@ export const previewBookingPrice = async (req, res) => {
       });
     }
 
-    const nights = Math.ceil(
-      (checkOut - checkIn) / (1000 * 60 * 60 * 24)
-    );
+    const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
     const discountPercent = 15;
     const totalPrice = calculateDynamicPrice({
@@ -626,5 +627,72 @@ export const previewBookingPrice = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+/* ======================================
+   OWNER EARNINGS API
+====================================== */
+
+export const getOwnerEarnings = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+    const { startDate, endDate } = req.query;
+
+    const ownerVillas = await Villa.find({ owner: ownerId }).select("_id");
+
+    if (!ownerVillas.length) {
+      return res.json({ success: true, earnings: [] });
+    }
+
+    const ownerVillaIds = ownerVillas.map(v => v._id);
+
+    let matchStage = {
+      status: "confirmed",
+      villa: { $in: ownerVillaIds },
+    };
+
+    if (startDate && endDate) {
+      matchStage.$and = [
+        { checkIn: { $lte: new Date(endDate) } },
+        { checkOut: { $gte: new Date(startDate) } },
+      ];
+    }
+
+    const earnings = await Booking.aggregate([
+      { $match: matchStage },
+
+      {
+        $lookup: {
+          from: "villas",
+          localField: "villa",
+          foreignField: "_id",
+          as: "villaData",
+        },
+      },
+      { $unwind: "$villaData" },
+
+      {
+        $group: {
+          _id: "$villaData.villaName",
+          totalEarnings: { $sum: "$totalPrice" },
+          totalBookings: { $sum: 1 },
+        },
+      },
+
+      { $sort: { totalEarnings: -1 } },
+    ]);
+
+    return res.json({
+      success: true,
+      earnings,
+    });
+
+  } catch (error) {
+    console.error("Owner Earnings Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   }
 };

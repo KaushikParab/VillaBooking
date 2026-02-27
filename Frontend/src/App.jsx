@@ -22,6 +22,7 @@ import Loader from "./Components/Loader";
 import SingleVilla from "./Pages/SingleVilla";
 import ForgotPassword from "./Pages/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword";
+import OwnerEarnings from "./Pages/owner/OwnerEarnings";
 
 function App() {
   const ownerPath = useLocation().pathname.includes("owner");
@@ -53,6 +54,10 @@ function App() {
           <Route path="rooms" element={owner ? <AllRooms /> : <Login />} />
           <Route path="add-room" element={owner ? <AddRoom /> : <Login />} />
           <Route path="bookings" element={owner ? <Bookings /> : <Login />} />
+          <Route
+            path="earnings"
+            element={owner ? <OwnerEarnings /> : <Login />}
+          />
         </Route>
       </Routes>
       {!ownerPath && <Footer />}
