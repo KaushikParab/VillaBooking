@@ -23,6 +23,7 @@ import SingleVilla from "./Pages/SingleVilla";
 import ForgotPassword from "./Pages/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword";
 import OwnerEarnings from "./Pages/owner/OwnerEarnings";
+import Favourites from "./Pages/Favourites";
 
 function App() {
   const ownerPath = useLocation().pathname.includes("owner");
@@ -44,6 +45,7 @@ function App() {
         <Route path="/loader/:nextUrl" element={<Loader />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:token" element={<ResetPassword />} />
+        <Route path="/favourites" element={<Favourites />} />
 
         <Route path="/owner" element={owner ? <OwnerLayout /> : <Login />}>
           <Route index element={owner ? <AllVillas /> : <Login />} />

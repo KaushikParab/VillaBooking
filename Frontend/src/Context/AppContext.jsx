@@ -27,6 +27,7 @@ const AppContextProvider = ({ children }) => {
     maxPrice: 3000,
   });
 
+  const [favourites, setFavourites] = useState([]);
   // -------- VILLAS (PAGINATION) --------
   const [villaData, setVillaData] = useState([]);
   const [villaPage, setVillaPage] = useState(1);
@@ -54,6 +55,38 @@ const AppContextProvider = ({ children }) => {
       }
     } catch (error) {
       console.log(error);
+    }
+  };
+
+  // ================= FETCH FAVOURITES =================
+  const fetchFavourites = async () => {
+    try {
+      const { data } = await axios.get("/api/favourites");
+
+      if (data.success) {
+        setFavourites(data.villas);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  // ================= TOGGLE FAVOURITE =================
+  const toggleFavourite = async (villaId) => {
+    // optimistic update
+    const isFav = favourites.some((v) => v._id === villaId);
+
+    if (isFav) {
+      setFavourites((prev) => prev.filter((v) => v._id !== villaId));
+    } else {
+      const villa = villaData.find((v) => v._id === villaId);
+      if (villa) setFavourites((prev) => [...prev, villa]);
+    }
+
+    try {
+      await axios.post(`/api/favourites/toggle/${villaId}`);
+    } catch (error) {
+      toast.error("Failed to update favourite");
+      fetchFavourites(); // rollback
     }
   };
 
@@ -185,6 +218,10 @@ const AppContextProvider = ({ children }) => {
 
   // ================= EFFECTS =================
   useEffect(() => {
+    if (user) fetchFavourites();
+  }, [user]);
+
+  useEffect(() => {
     getPopularRooms();
     getPopularVillas();
   }, []);
@@ -259,6 +296,11 @@ const AppContextProvider = ({ children }) => {
     roomLoading,
     popularRooms,
     popularRoomsLoading,
+
+    //favourite
+    favourites,
+    toggleFavourite,
+    fetchFavourites,
 
     axios,
   };

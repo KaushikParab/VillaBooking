@@ -1,8 +1,13 @@
-import { MapPin, Star, Users, IndianRupee } from "lucide-react";
+import { MapPin, Star, Users, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AppContext } from "../Context/AppContext";
 
 export default function VillaCard({ villa }) {
   const navigate = useNavigate();
+  const { favourites, toggleFavourite } = useContext(AppContext);
+
+  const isFavourite = favourites.some((fav) => fav._id === villa._id);
 
   return (
     <div
@@ -26,6 +31,21 @@ export default function VillaCard({ villa }) {
           <Star size={14} className="text-yellow-400" />
           {villa.rating || "4.5"}
         </div>
+        {/* Favourite */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation(); // prevent single villa page navigation
+            toggleFavourite(villa._id);
+          }}
+          className="absolute top-3 right-3 bg-black/60 backdrop-blur-md p-2 rounded-full"
+        >
+          <Heart
+            size={20}
+            className={`transition-all duration-300 ${
+              isFavourite ? "fill-red-500 text-red-500" : "text-white"
+            }`}
+          />
+        </button>
 
         {/* Price */}
         <div className="absolute bottom-3 right-3 bg-[#6A0DAD] px-4 py-2 rounded-full text-white font-bold text-sm">
@@ -71,14 +91,16 @@ export default function VillaCard({ villa }) {
             <span>{villa.guests || 6} Guests</span>
           </div>
 
-          <button className="
+          <button
+            className="
               bg-gradient-to-r from-[#6A0DAD] to-[#FFD369]
               text-white font-medium text-sm
               rounded-md px-4 py-1.5
               transition-all duration-300
               hover:from-[#FFD369] hover:to-[#6A0DAD]
               hover:text-black
-            ">
+            "
+          >
             View Details
           </button>
         </div>

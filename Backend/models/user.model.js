@@ -21,6 +21,13 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+
+    favourites: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Villa",
+      },
+    ],
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },

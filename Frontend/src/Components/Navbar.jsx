@@ -77,7 +77,6 @@ const Navbar = () => {
               <div className="bg-current h-0.5 w-0 group-hover:w-full transition-all duration-300" />
             </Link>
           ))}
-          
         </div>
 
         {/* Desktop Right */}
@@ -100,8 +99,16 @@ const Navbar = () => {
                       My Bookings
                     </Link>
                   </li>
+                  <li>
+                    <Link
+                      to={"/favourites"}
+                      className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
+                    >
+                      Favourites
+                    </Link>
+                  </li>
                   <li onClick={logout}>
-                    <Link className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100">
+                    <Link className="text-center px-5 py-3 text-sm font-medium text-red-500">
                       Log out
                     </Link>
                   </li>
@@ -164,44 +171,52 @@ const Navbar = () => {
             </Link>
           ))}
 
-          
-
-          <div className="flex md:hidden items-center gap-4">
-            {user ? (
-              <div className="relative group inline-block">
-                <img
-                  src={profileIcon}
-                  alt="Profile"
-                  className="w-12 h-12 rounded-full cursor-pointer"
-                />
-                {/* Dropdown Menu */}
-                <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 group-hover:visible invisible transition duration-300 z-50">
-                  <ul className="py-2">
-                    <li>
-                      <Link
-                        to={"/my-bookings"}
-                        className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100"
-                      >
-                        My Bookings
-                      </Link>
-                    </li>
-                    <li onClick={logout}>
-                      <Link className="block px-4 py-2 text-sm text-gray-800 hover:bg-gray-100">
-                        Log out
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => navigate("/login")}
-                className="px-8 py-2.5 rounded-full transition-all duration-500 bg-blue-400 text-black cursor-pointer hover:bg-indigo-600 hover:text-white "
+          {/* User Actions (Mobile Only) */}
+          {user ? (
+            <div className="flex flex-col gap-3 mt-4 w-full px-10">
+              <Link
+                to="/my-bookings"
+                onClick={() => setIsMenuOpen(false)}
+                className="w-full text-center py-3 rounded-lg bg-gray-100
+                 hover:bg-gray-200 transition duration-200"
               >
-                Login
+                My Bookings
+              </Link>
+
+              <Link
+                to="/favourites"
+                onClick={() => setIsMenuOpen(false)}
+                className="w-full text-center py-3 rounded-lg bg-gray-100
+                 hover:bg-gray-200 transition duration-200"
+              >
+                Favourites
+              </Link>
+
+              <button
+                onClick={() => {
+                  logout();
+                  setIsMenuOpen(false);
+                }}
+                className="w-full py-3 rounded-lg bg-red-50 text-red-500
+                 hover:bg-red-100 transition duration-200"
+              >
+                Log out
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                navigate("/login");
+                setIsMenuOpen(false);
+              }}
+              className="px-8 py-3 rounded-full mt-4
+               bg-blue-400 text-black
+               hover:bg-indigo-600 hover:text-white
+               transition-all duration-300"
+            >
+              Login
+            </button>
+          )}
         </div>
       </nav>
     </div>
