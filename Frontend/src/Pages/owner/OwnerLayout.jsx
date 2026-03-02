@@ -1,4 +1,10 @@
-import { Warehouse, CalendarArrowDown, Bed,TrendingUp  } from "lucide-react";
+import {
+  Warehouse,
+  CalendarArrowDown,
+  Bed,
+  TrendingUp,
+  CalendarX,
+} from "lucide-react";
 import { useContext } from "react";
 import { AppContext } from "../../Context/AppContext";
 import toast from "react-hot-toast";
@@ -14,6 +20,7 @@ function OwnerLayout() {
     { name: "Rooms", path: "/owner/rooms", icon: <Bed /> },
     { name: "Bookings", path: "/owner/bookings", icon: <CalendarArrowDown /> },
     { name: "Earnings", path: "/owner/earnings", icon: <TrendingUp /> },
+    { name: "Blocked Dates", path: "/owner/blocked-dates", icon: <CalendarX /> },
   ];
 
   const navigate = useNavigate();

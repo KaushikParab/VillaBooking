@@ -24,6 +24,7 @@ import ForgotPassword from "./Pages/ForgotPassword";
 import ResetPassword from "./Pages/ResetPassword";
 import OwnerEarnings from "./Pages/owner/OwnerEarnings";
 import Favourites from "./Pages/Favourites";
+import BlockedDates from "./Pages/owner/BlockedDates";
 
 function App() {
   const ownerPath = useLocation().pathname.includes("owner");
@@ -56,10 +57,8 @@ function App() {
           <Route path="rooms" element={owner ? <AllRooms /> : <Login />} />
           <Route path="add-room" element={owner ? <AddRoom /> : <Login />} />
           <Route path="bookings" element={owner ? <Bookings /> : <Login />} />
-          <Route
-            path="earnings"
-            element={owner ? <OwnerEarnings /> : <Login />}
-          />
+          <Route path="earnings" element={owner ? <OwnerEarnings /> : <Login />} />
+          <Route path="blocked-dates" element={<BlockedDates />} />
         </Route>
       </Routes>
       {!ownerPath && <Footer />}

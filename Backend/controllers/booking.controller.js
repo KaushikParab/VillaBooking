@@ -5,6 +5,7 @@ import User from "../models/user.model.js";
 import transporter from "../config/nodemailer.js";
 import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
+import AvailabilityBlock from "../models/availabilityBlock.model.js";
 
 // ================= EMAIL HELPER =================
 const sendBookingEmail = async (booking, subject, title) => {
@@ -47,14 +48,27 @@ export const checkAvailability = async ({
   checkInDate,
   checkOutDate,
 }) => {
-  const overlappingBooking = await Booking.findOne({
+
+  const dateFilter = {
     villa,
-    status: { $ne: "cancelled" },
     checkIn: { $lte: new Date(checkOutDate) },
     checkOut: { $gte: new Date(checkInDate) },
+  };
+
+  // WEBSITE BOOKINGS
+  const bookingExists = await Booking.findOne({
+    ...dateFilter,
+    status: { $ne: "cancelled" },
   });
 
-  return !overlappingBooking;
+  if (bookingExists) return false;
+
+  // MANUAL BLOCKS
+  const blockExists = await AvailabilityBlock.findOne(dateFilter);
+
+  if (blockExists) return false;
+
+  return true;
 };
 
 /* ================================
@@ -639,16 +653,26 @@ export const getOwnerEarnings = async (req, res) => {
     const ownerId = req.user.id;
     const { startDate, endDate } = req.query;
 
+    // ===== OWNER VILLAS =====
     const ownerVillas = await Villa.find({ owner: ownerId }).select("_id");
 
     if (!ownerVillas.length) {
-      return res.json({ success: true, earnings: [] });
+      return res.json({
+        success: true,
+        earnings: [],
+        stats: {
+          totalBookings: 0,
+          confirmed: 0,
+          pending: 0,
+          cancelled: 0,
+        },
+      });
     }
 
     const ownerVillaIds = ownerVillas.map(v => v._id);
 
+    // ===== MATCH FILTER =====
     let matchStage = {
-      status: "confirmed",
       villa: { $in: ownerVillaIds },
     };
 
@@ -659,33 +683,77 @@ export const getOwnerEarnings = async (req, res) => {
       ];
     }
 
-    const earnings = await Booking.aggregate([
+    // ===== SINGLE OPTIMIZED AGGREGATION =====
+    const result = await Booking.aggregate([
       { $match: matchStage },
 
       {
-        $lookup: {
-          from: "villas",
-          localField: "villa",
-          foreignField: "_id",
-          as: "villaData",
+        $facet: {
+
+          /* =====================
+             EARNINGS PER VILLA
+          ===================== */
+          earnings: [
+            { $match: { status: "confirmed" } },
+
+            {
+              $lookup: {
+                from: "villas",
+                localField: "villa",
+                foreignField: "_id",
+                as: "villaData",
+              },
+            },
+            { $unwind: "$villaData" },
+
+            {
+              $group: {
+                _id: "$villaData.villaName",
+                totalEarnings: { $sum: "$totalPrice" },
+                totalBookings: { $sum: 1 },
+              },
+            },
+
+            { $sort: { totalEarnings: -1 } },
+          ],
+
+          /* =====================
+             BOOKING STATS
+          ===================== */
+          stats: [
+            {
+              $group: {
+                _id: "$status",
+                count: { $sum: 1 },
+              },
+            },
+          ],
         },
       },
-      { $unwind: "$villaData" },
-
-      {
-        $group: {
-          _id: "$villaData.villaName",
-          totalEarnings: { $sum: "$totalPrice" },
-          totalBookings: { $sum: 1 },
-        },
-      },
-
-      { $sort: { totalEarnings: -1 } },
     ]);
+
+    // ===== FORMAT STATS =====
+    const statsData = result[0].stats || [];
+
+    const stats = {
+      totalBookings: 0,
+      confirmed: 0,
+      pending: 0,
+      cancelled: 0,
+    };
+
+    statsData.forEach(s => {
+      stats.totalBookings += s.count;
+
+      if (s._id === "confirmed") stats.confirmed = s.count;
+      if (s._id === "pending") stats.pending = s.count;
+      if (s._id === "cancelled") stats.cancelled = s.count;
+    });
 
     return res.json({
       success: true,
-      earnings,
+      earnings: result[0].earnings || [],
+      stats,
     });
 
   } catch (error) {
