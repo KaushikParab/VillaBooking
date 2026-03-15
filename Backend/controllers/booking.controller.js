@@ -7,6 +7,11 @@ import razorpay from "../config/razorpay.js";
 import crypto from "crypto";
 import AvailabilityBlock from "../models/availabilityBlock.model.js";
 
+// Calculate total persons
+const getTotalPersons = ({ adults = 0, children = 0, infants = 0 }) => {
+  return Number(adults) + Number(children) + Number(infants);
+};
+
 // ================= EMAIL HELPER =================
 const sendBookingEmail = async (booking, subject, title) => {
   try {
@@ -48,7 +53,6 @@ export const checkAvailability = async ({
   checkInDate,
   checkOutDate,
 }) => {
-
   const dateFilter = {
     villa,
     checkIn: { $lte: new Date(checkOutDate) },
@@ -119,32 +123,48 @@ export const checkVillaAvailability = async (req, res) => {
 // -----------DYNAMIC DAY-WISE PRICE CALCULATOR-------------
 const calculateDynamicPrice = ({
   basePrice,
-  persons,
+  adults = 0,
+  children = 0,
+  infants = 0,
   checkIn,
   checkOut,
-  discountPercent = 10,
+  discountPercent = 15,
 }) => {
-  let total = 0;
+  const startDate = new Date(checkIn);
+  const endDate = new Date(checkOut);
 
-  const current = new Date(checkIn);
+  let totalPrice = 0;
+  let totalNights = 0;
+  let weekdayNights = 0;
 
-  while (current < checkOut) {
-    const day = current.getDay(); // 0=Sun, 6=Sat
+  const adultsCost = adults * basePrice;
+  const childrenCost = children * (basePrice * 0.5);
+  const infantsCost = 0;
 
+  const pricePerNight = adultsCost + childrenCost + infantsCost;
+
+  for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
+    totalNights++;
+
+    const day = d.getDay();
     const isWeekend = day === 0 || day === 6;
 
-    let priceForThisNight = basePrice;
+    let nightlyPrice = pricePerNight;
 
     if (!isWeekend) {
-      priceForThisNight = basePrice - (basePrice * discountPercent) / 100;
+      nightlyPrice = nightlyPrice - (nightlyPrice * discountPercent) / 100;
+      weekdayNights++;
     }
 
-    total += priceForThisNight * persons;
-
-    current.setDate(current.getDate() + 1);
+    totalPrice += nightlyPrice;
   }
 
-  return Math.round(total);
+  return {
+    totalPrice: Math.round(totalPrice),
+    totalNights,
+    weekdayNights,
+    discountApplied: weekdayNights > 0,
+  };
 };
 
 /* ================================
@@ -155,8 +175,27 @@ export const bookRoom = async (req, res) => {
     const { id } = req.user;
     const user = await User.findById(id);
 
-    const { room, villa, checkInDate, checkOutDate, persons, paymentMethod } =
-      req.body;
+    const {
+      room,
+      villa,
+      checkInDate,
+      checkOutDate,
+      persons,
+      adults = 0,
+      children = 0,
+      infants = 0,
+      paymentMethod,
+    } = req.body;
+
+    const totalPersons =
+      getTotalPersons({ adults, children, infants }) || Number(persons) || 0;
+
+    if (totalPersons <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one guest required",
+      });
+    }
 
     const checkIn = new Date(checkInDate);
     const checkOut = new Date(checkOutDate);
@@ -195,15 +234,26 @@ export const bookRoom = async (req, res) => {
           message: "Villa not found",
         });
       }
+
+      if (totalPersons > villaData.guests) {
+        return res.status(400).json({
+          success: false,
+          message: `Maximum ${villaData.guests} guests allowed`,
+        });
+      }
       const pricePerPersonPerNight = Number(villaData.price);
 
-      const totalPrice = calculateDynamicPrice({
+      const priceResult = calculateDynamicPrice({
         basePrice: pricePerPersonPerNight,
-        persons,
+        adults,
+        children,
+        infants,
         checkIn,
         checkOut,
         discountPercent: 15,
       });
+
+      const totalPrice = priceResult.totalPrice;
 
       const booking = await Booking.create({
         user: id,
@@ -212,7 +262,10 @@ export const bookRoom = async (req, res) => {
         bookingType: "villa",
         checkIn,
         checkOut,
-        persons,
+        persons: totalPersons,
+        adults,
+        children,
+        infants,
         totalPrice,
         paymentMethod,
         status: "pending",
@@ -262,11 +315,20 @@ export const bookRoom = async (req, res) => {
     /* =========================
        SINGLE ROOM BOOKING
     ========================= */
+
     const roomData = await Room.findById(room).populate("villa");
+
     if (!roomData) {
       return res
         .status(404)
         .json({ success: false, message: "Room not found" });
+    }
+
+    if (totalPersons > roomData.villa.guests) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum ${roomData.villa.guests} guests allowed`,
+      });
     }
 
     const isAvailable = await checkAvailability({
@@ -282,13 +344,17 @@ export const bookRoom = async (req, res) => {
       });
     }
 
-    const totalPrice = calculateDynamicPrice({
+    const priceResult = calculateDynamicPrice({
       basePrice: roomData.pricePerNight,
-      persons,
+      adults,
+      children,
+      infants,
       checkIn,
       checkOut,
       discountPercent: 15,
     });
+
+    const totalPrice = priceResult.totalPrice;
 
     const booking = await Booking.create({
       user: id,
@@ -297,7 +363,10 @@ export const bookRoom = async (req, res) => {
       bookingType: "room",
       checkIn,
       checkOut,
-      persons,
+      persons: totalPersons,
+      adults,
+      children,
+      infants,
       totalPrice,
       paymentMethod,
       status: "pending",
@@ -556,9 +625,20 @@ export const cancelBooking = async (req, res) => {
 ================================ */
 export const previewBookingPrice = async (req, res) => {
   try {
-    const { villa, room, checkInDate, checkOutDate, persons } = req.body;
+    const {
+      villa,
+      room,
+      checkInDate,
+      checkOutDate,
+      persons,
+      adults = 0,
+      children = 0,
+      infants = 0,
+    } = req.body;
 
-    if (!checkInDate || !checkOutDate || !persons) {
+    const totalPersons = getTotalPersons({ adults, children, infants });
+
+    if (!checkInDate || !checkOutDate || totalPersons === 0) {
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -619,9 +699,12 @@ export const previewBookingPrice = async (req, res) => {
     const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
     const discountPercent = 15;
-    const totalPrice = calculateDynamicPrice({
+
+    const priceResult = calculateDynamicPrice({
       basePrice,
-      persons,
+      adults,
+      children,
+      infants,
       checkIn,
       checkOut,
       discountPercent,
@@ -632,10 +715,10 @@ export const previewBookingPrice = async (req, res) => {
       isAvailable: true,
       priceDetails: {
         basePrice,
-        persons,
+        persons: totalPersons,
         nights,
-        totalPrice,
-        discountPercent,
+        totalPrice: priceResult.totalPrice,
+        discountPercent: priceResult.discountApplied ? discountPercent : 0,
       },
     });
   } catch (error) {
@@ -669,7 +752,7 @@ export const getOwnerEarnings = async (req, res) => {
       });
     }
 
-    const ownerVillaIds = ownerVillas.map(v => v._id);
+    const ownerVillaIds = ownerVillas.map((v) => v._id);
 
     // ===== MATCH FILTER =====
     let matchStage = {
@@ -689,7 +772,6 @@ export const getOwnerEarnings = async (req, res) => {
 
       {
         $facet: {
-
           /* =====================
              EARNINGS PER VILLA
           ===================== */
@@ -742,7 +824,7 @@ export const getOwnerEarnings = async (req, res) => {
       cancelled: 0,
     };
 
-    statsData.forEach(s => {
+    statsData.forEach((s) => {
       stats.totalBookings += s.count;
 
       if (s._id === "confirmed") stats.confirmed = s.count;
@@ -755,7 +837,6 @@ export const getOwnerEarnings = async (req, res) => {
       earnings: result[0].earnings || [],
       stats,
     });
-
   } catch (error) {
     console.error("Owner Earnings Error:", error);
     res.status(500).json({

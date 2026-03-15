@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 
 const RegisterVilla = () => {
   const { axios, navigate } = useContext(AppContext);
+  const [imageError, setImageError] = useState("");
 
   const [data, setData] = useState({
     villaName: "",
@@ -14,10 +15,31 @@ const RegisterVilla = () => {
     price: "",
     amenities: "",
     images: [],
+    meals: {
+      breakfast: false,
+      lunch: false,
+      dinner: false,
+    },
   });
 
   const handleChange = (e) => {
     setData({ ...data, [e.target.name]: e.target.value });
+
+    const { name, value } = e.target;
+
+    if (name === "villaContactNo") {
+      const onlyNumbers = value.replace(/[^0-9]/g, "");
+
+      setData({
+        ...data,
+        [name]: onlyNumbers,
+      });
+    } else {
+      setData({
+        ...data,
+        [name]: value,
+      });
+    }
   };
 
   const handleImageChange = (e, index) => {
@@ -40,6 +62,16 @@ const RegisterVilla = () => {
     formData.append("guests", data.guests);
     formData.append("price", data.price);
     formData.append("amenities", data.amenities);
+    formData.append("meals", JSON.stringify(data.meals));
+
+    const hasImage = data.images.some((img) => img);
+
+    if (!hasImage) {
+      setImageError("Please upload at least one villa image.");
+      return;
+    }
+
+    setImageError("");
 
     for (let i = 0; i < data.images.length; i++) {
       formData.append("images", data.images[i]);
@@ -61,6 +93,26 @@ const RegisterVilla = () => {
     }
   };
 
+  const handleNumberChange = (e, min, max, integer = false) => {
+    const { name, value } = e.target;
+
+    if (value === "") {
+      setData((prev) => ({ ...prev, [name]: "" }));
+      return;
+    }
+
+    const num = integer ? parseInt(value, 10) : Number(value);
+
+    if (
+      !isNaN(num) &&
+      num >= min &&
+      (max === null || num <= max) &&
+      (!integer || Number.isInteger(num))
+    ) {
+      setData((prev) => ({ ...prev, [name]: num }));
+    }
+  };
+
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
       <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
@@ -78,7 +130,10 @@ const RegisterVilla = () => {
                     accept="image/*"
                     id={`villaImage${index}`}
                     hidden
-                    onChange={(e) => handleImageChange(e, index)}
+                    onChange={(e) => {
+                      handleImageChange(e, index);
+                      setImageError("");
+                    }}
                   />
                   <img
                     className="max-w-24 rounded-md cursor-pointer"
@@ -94,6 +149,9 @@ const RegisterVilla = () => {
                 </label>
               ))}
           </div>
+          {imageError && (
+            <p className="text-red-500 text-sm mt-2">{imageError}</p>
+          )}
         </div>
 
         {/* Get Villa Name */}
@@ -117,6 +175,9 @@ const RegisterVilla = () => {
             value={data.villaContactNo}
             onChange={handleChange}
             type="text"
+            maxLength={10}
+            inputMode="numeric"
+            placeholder="Enter 10 digit number"
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
             required
           />
@@ -131,6 +192,7 @@ const RegisterVilla = () => {
             onChange={handleChange}
             rows={4}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
+            required
           />
         </div>
 
@@ -139,12 +201,18 @@ const RegisterVilla = () => {
           <div className="flex flex-col gap-1 w-32">
             <label className="text-base font-medium">Rating</label>
             <input
-              min={0}
-              max={5}
               type="number"
               name="rating"
+              min={0}
+              max={5}
+              step={1}
               value={data.rating}
-              onChange={handleChange}
+              onChange={(e) => handleNumberChange(e, 0, 5)}
+              onKeyDown={(e) => {
+                if (["e", "E", "+", "-", "."].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
               required
             />
@@ -154,14 +222,21 @@ const RegisterVilla = () => {
           <div className="flex md:flex-col max-md:gap-2 max-md:items-center">
             <label htmlFor="guests">Guests</label>
             <input
-              min={1}
-              max={30}
               id="guests"
               name="guests"
               type="number"
+              min={1}
+              max={30}
+              step={1}
               value={data.guests}
-              onChange={handleChange}
-              className="bg-[#1E1E1E/80] rounded border border-gray-500/40 px-3 py-1.5 mt-1.5 text-sm outline-none  max-w-16"
+              onChange={(e) => handleNumberChange(e, 1, 30, true)}
+              onKeyDown={(e) => {
+                if (["e", "E", "+", "-", "."].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
+              className="bg-[#1E1E1E/80] rounded border border-gray-500/40 px-3 py-1.5 mt-1.5 text-sm outline-none max-w-16"
+              required
             />
           </div>
         </div>
@@ -170,11 +245,17 @@ const RegisterVilla = () => {
         <div className="flex flex-col gap-1 w-32">
           <label className="text-base font-medium">Price</label>
           <input
-            min={0}
             type="number"
             name="price"
+            min={1}
+            step={1}
             value={data.price}
-            onChange={handleChange}
+             onChange={(e) => handleNumberChange(e, 1, null, true)}
+            onKeyDown={(e) => {
+              if (["e", "E", "+", "-", "."].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
             required
           />
@@ -191,6 +272,29 @@ const RegisterVilla = () => {
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
             required
           />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-medium">Meals Available</label>
+
+          {["breakfast", "lunch", "dinner"].map((meal) => (
+            <label key={meal} className="flex gap-2 items-center">
+              <input
+                type="checkbox"
+                checked={data.meals[meal]}
+                onChange={(e) =>
+                  setData({
+                    ...data,
+                    meals: {
+                      ...data.meals,
+                      [meal]: e.target.checked,
+                    },
+                  })
+                }
+              />
+              {meal}
+            </label>
+          ))}
         </div>
 
         {/* Submit Form */}

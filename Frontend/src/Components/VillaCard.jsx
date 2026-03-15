@@ -1,13 +1,25 @@
 import { MapPin, Star, Users, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useContext } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
 
 export default function VillaCard({ villa }) {
   const navigate = useNavigate();
   const { favourites, toggleFavourite } = useContext(AppContext);
 
-  const isFavourite = favourites.some((fav) => fav._id === villa._id);
+  const [isFavourite, setIsFavourite] = useState(false);
+
+  useEffect(() => {
+    setIsFavourite(favourites.some((fav) => fav._id === villa._id));
+  }, [favourites, villa._id]);
+
+  const handleFavourite = (e) => {
+    e.stopPropagation();
+
+    setIsFavourite((prev) => !prev);
+
+    toggleFavourite(villa._id);
+  };
 
   return (
     <div
@@ -31,12 +43,10 @@ export default function VillaCard({ villa }) {
           <Star size={14} className="text-yellow-400" />
           {villa.rating || "4.5"}
         </div>
+
         {/* Favourite */}
         <button
-          onClick={(e) => {
-            e.stopPropagation(); // prevent single villa page navigation
-            toggleFavourite(villa._id);
-          }}
+          onClick={handleFavourite}
           className="absolute top-3 right-3 bg-black/60 backdrop-blur-md p-2 rounded-full"
         >
           <Heart
@@ -55,18 +65,15 @@ export default function VillaCard({ villa }) {
 
       {/* Content */}
       <div className="p-5 space-y-2">
-        {/* Villa Name */}
         <h2 className="text-xl font-semibold text-white truncate">
           {villa.villaName}
         </h2>
 
-        {/* Location */}
         <div className="flex items-center gap-2 text-white/70 text-sm">
           <MapPin size={16} />
           <span className="truncate">{villa.villaAddress}</span>
         </div>
 
-        {/* Amenities Preview */}
         <div className="flex flex-wrap gap-2 mt-2">
           {villa.amenities
             ?.split(",")
@@ -84,7 +91,6 @@ export default function VillaCard({ villa }) {
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex justify-between items-center pt-3 border-t border-white/10">
           <div className="flex items-center gap-1 text-white/70 text-sm">
             <Users size={16} />

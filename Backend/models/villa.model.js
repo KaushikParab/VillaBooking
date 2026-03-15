@@ -9,8 +9,18 @@ const villaSchema = new mongoose.Schema(
     guests: { type: Number, required: true },
     price: { type: Number, required: true },
     amenities: { type: String, required: true },
-
     images: { type: [String], required: true },
+
+    totalRooms: {
+      type: Number,
+      default: 0,
+    },
+
+    meals: {
+      breakfast: { type: Boolean, default: false },
+      lunch: { type: Boolean, default: false },
+      dinner: { type: Boolean, default: false },
+    },
 
     owner: {
       type: mongoose.Schema.Types.ObjectId,
@@ -18,7 +28,7 @@ const villaSchema = new mongoose.Schema(
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Villa = mongoose.model("Villa", villaSchema);

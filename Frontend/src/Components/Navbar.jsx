@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AppContext } from "../Context/AppContext";
 import profileIcon from "../assets/profile_icon.png";
+import download from "../assets/download.png";
 import toast from "react-hot-toast";
 
 const Navbar = () => {
@@ -89,7 +90,7 @@ const Navbar = () => {
                 className="w-12 h-12 rounded-full cursor-pointer"
               />
               {/* Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-40 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 group-hover:visible invisible transition duration-300 z-50">
+              <div className="absolute right-0 mt-0 pt-2 w-40 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 group-hover:visible invisible transition duration-300 z-50">
                 <ul className="py-2">
                   <li>
                     <Link
@@ -108,7 +109,7 @@ const Navbar = () => {
                     </Link>
                   </li>
                   <li onClick={logout}>
-                    <Link className="text-center px-5 py-3 text-sm font-medium text-red-500">
+                    <Link className=" px-5 py-3 text-sm font-medium text-red-500 block hover:bg-red-200">
                       Log out
                     </Link>
                   </li>
@@ -177,8 +178,8 @@ const Navbar = () => {
               <Link
                 to="/my-bookings"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full text-center py-3 rounded-lg bg-gray-100
-                 hover:bg-gray-200 transition duration-200"
+                className="w-full text-center py-3 rounded-lg 
+                 transition duration-200"
               >
                 My Bookings
               </Link>
@@ -186,8 +187,7 @@ const Navbar = () => {
               <Link
                 to="/favourites"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full text-center py-3 rounded-lg bg-gray-100
-                 hover:bg-gray-200 transition duration-200"
+                className="w-full text-center py-3 rounded-lg transition duration-200"
               >
                 Favourites
               </Link>
@@ -197,8 +197,8 @@ const Navbar = () => {
                   logout();
                   setIsMenuOpen(false);
                 }}
-                className="w-full py-3 rounded-lg bg-red-50 text-red-500
-                 hover:bg-red-100 transition duration-200"
+                className="w-full py-3 rounded-lg text-red-500
+                  transition duration-200"
               >
                 Log out
               </button>

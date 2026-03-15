@@ -1,5 +1,5 @@
 import { cities } from "../assets/assets.js";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { AppContext } from "../Context/AppContext";
 import { MapPin, Calendar, Users, IndianRupee } from "lucide-react";
 import Cookies from "js-cookie";
@@ -21,7 +21,15 @@ function Hero() {
     priceRange,
   } = useContext(AppContext);
   const [searchLocation, setSearchLocation] = useState("");
-  const [guestInput, setGuestInput] = useState("");
+  const [guestDropdown, setGuestDropdown] = useState(false);
+  const guestRef = useRef(null);
+  const [guestData, setGuestData] = useState({
+    adults: 1,
+    children: 0,
+    infants: 0,
+  });
+
+  const totalGuests = guestData.adults + guestData.children + guestData.infants;
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [price, setPrice] = useState({
@@ -32,7 +40,9 @@ function Hero() {
   const handleSearch = () => {
     const filters = {
       location: searchLocation,
-      guests: guestInput,
+      adults: guestData.adults,
+      children: guestData.children,
+      infants: guestData.infants,
       checkIn,
       checkOut,
       minPrice: price.minPrice,
@@ -41,20 +51,41 @@ function Hero() {
 
     Cookies.set("villaFilters", JSON.stringify(filters), { expires: 7 });
     setLocation(searchLocation);
-    setGuests(guestInput);
+    setGuests(guestData);
     setDates({ checkIn, checkOut });
     setPriceRange(price);
     searchVillasFn(filters);
   };
 
   useEffect(() => {
-  setSearchLocation(location);
-  setGuestInput(guests);
-  setCheckIn(dates.checkIn);
-  setCheckOut(dates.checkOut);
-  setPrice(priceRange);
-}, [location, guests, dates, priceRange]);
+    setSearchLocation(location);
 
+    if (guests) {
+      setGuestData({
+        adults: guests.adults || 1,
+        children: guests.children || 0,
+        infants: guests.infants || 0,
+      });
+    }
+
+    setCheckIn(dates.checkIn);
+    setCheckOut(dates.checkOut);
+    setPrice(priceRange);
+  }, [location, guests, dates, priceRange]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (guestRef.current && !guestRef.current.contains(event.target)) {
+        setGuestDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <>
@@ -63,7 +94,7 @@ function Hero() {
           e.preventDefault();
           handleSearch();
         }}
-        className=" max-w-4xl w-full mx-auto bg-[#2A2A2A] border-2 border-[#444444] text-[#CCCCCC] rounded-xl px-6 py-4  flex flex-col md:flex-row max-md:items-start gap-4 max-md:mx-auto"
+        className=" max-w-5xl w-full mx-auto bg-[#2A2A2A] border-2 border-[#444444] text-[#CCCCCC] rounded-xl px-6 py-4  flex flex-col md:flex-row max-md:items-start gap-4 max-md:mx-auto"
       >
         {/* Location */}
         <div>
@@ -124,22 +155,74 @@ function Hero() {
           />
         </div>
 
-        {/* Guest */}
-        <div>
+        {/* Guests Selector */}
+        <div className="relative" ref={guestRef}>
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-[#FFD369] opacity-80" />
-            <label htmlFor="guests">Guests</label>
+            <label>Guests</label>
           </div>
-          <input
-            min={1}
-            max={30}
-            id="guests"
-            type="number"
-            value={guestInput}
-            onChange={(e) => setGuestInput(e.target.value)}
-            className="bg-[#1E1E1E/80] placeholder-[#888888] rounded border text-[#FFFFFF] border-gray-200 focus:border-[#FFD369] px-3 py-1.5 mt-1.5 text-sm outline-none  max-w-16"
-            placeholder="0"
-          />
+
+          {/* INPUT DISPLAY */}
+          <div
+            onClick={() => setGuestDropdown(!guestDropdown)}
+            className="cursor-pointer bg-[#1E1E1E/80] text-[#FFFFFF] rounded border border-gray-200 focus:border-[#FFD369] px-3 py-1.5 mt-1.5 text-sm outline-none min-w-[120px]"
+          >
+            {totalGuests} Guest{totalGuests !== 1 && "s"}
+          </div>
+
+          {/* DROPDOWN */}
+          {guestDropdown && (
+            <div className="absolute z-50 mt-2 w-64 bg-[#2A2A2A] border border-[#444] rounded-lg shadow-lg p-4">
+              {[
+                { label: "Adults", key: "adults", min: 1 },
+                { label: "Children", key: "children", min: 0 },
+                { label: "Infants", key: "infants", min: 0 },
+              ].map((item) => (
+                <div
+                  key={item.key}
+                  className="flex justify-between items-center py-2 text-white"
+                >
+                  <span>{item.label}</span>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGuestData((prev) => ({
+                          ...prev,
+                          [item.key]: Math.max(item.min, prev[item.key] - 1),
+                        }))
+                      }
+                      className="w-8 h-8 rounded-full border border-[#FFD369] text-[#FFD369]"
+                    >
+                      −
+                    </button>
+
+                    <span className="w-6 text-center">
+                      {guestData[item.key]}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setGuestData((prev) => ({
+                          ...prev,
+                          [item.key]: prev[item.key] + 1,
+                        }))
+                      }
+                      className="w-8 h-8 rounded-full border border-[#FFD369] text-[#FFD369]"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="border-t border-[#444] pt-2 mt-2 text-sm text-[#FFD369]">
+                Total Guests: <b>{totalGuests}</b>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* PRICE RANGE SLIDER */}
@@ -154,8 +237,8 @@ function Hero() {
               <div
                 className="h-2 bg-[#FFD369] rounded absolute"
                 style={{
-                  left: `${(price.minPrice / 10000) * 100}%`,
-                  right: `${100 - (price.maxPrice / 10000) * 100}%`,
+                  left: `${(price.minPrice / 20000) * 100}%`,
+                  right: `${100 - (price.maxPrice / 20000) * 100}%`,
                 }}
               />
             </div>
@@ -164,7 +247,7 @@ function Hero() {
             <input
               type="range"
               min={0}
-              max={10000}
+              max={20000}
               value={price.minPrice}
               onChange={(e) =>
                 setPrice((prev) => ({
@@ -183,7 +266,7 @@ function Hero() {
             <input
               type="range"
               min={0}
-              max={10000}
+              max={20000}
               value={price.maxPrice}
               onChange={(e) =>
                 setPrice((prev) => ({

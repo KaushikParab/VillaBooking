@@ -19,7 +19,6 @@ export default function BlockedDates() {
     source: "offline",
   });
 
-
   useEffect(() => {
     fetchVillas();
     fetchBlocked();
@@ -34,7 +33,6 @@ export default function BlockedDates() {
     }
   };
 
-
   const fetchBlocked = async () => {
     try {
       const { data } = await axios.get("/api/availability");
@@ -44,14 +42,12 @@ export default function BlockedDates() {
     }
   };
 
- 
   useEffect(() => {
     if (!form.villa) return;
     const selectedVilla = villas.find((v) => v._id === form.villa);
     setRooms(selectedVilla?.rooms || []);
   }, [form.villa, villas]);
 
-  
   const handleChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -59,7 +55,6 @@ export default function BlockedDates() {
     }));
   };
 
- 
   const toggleRoom = (roomId) => {
     setForm((prev) => ({
       ...prev,
@@ -69,7 +64,6 @@ export default function BlockedDates() {
     }));
   };
 
-  
   const addEntry = async () => {
     if (!form.villa || !form.checkIn || !form.checkOut) {
       return toast.error("Fill required fields");
@@ -101,7 +95,6 @@ export default function BlockedDates() {
     }
   };
 
- 
   const removeBlock = async (id) => {
     try {
       await axios.delete(`/api/availability/${id}`);
@@ -112,7 +105,6 @@ export default function BlockedDates() {
     }
   };
 
- 
   const isExpired = (date) => {
     const today = new Date();
     const checkDate = new Date(date);
@@ -126,7 +118,6 @@ export default function BlockedDates() {
   const getVillaName = (villaId) =>
     villas.find((v) => v._id === villaId)?.villaName || "Villa";
 
- 
   const formatDate = (date) => {
     if (!date) return "";
     return new Date(date).toISOString().split("T")[0];
@@ -136,8 +127,15 @@ export default function BlockedDates() {
     <div className="p-6 text-white max-w-5xl mx-auto">
       <h1 className="text-3xl font-semibold mb-6">Block Villa Dates</h1>
 
-      <div className="bg-[#1f2937] p-6 rounded-xl space-y-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          addEntry();
+        }}
+        className="bg-[#1f2937] p-6 rounded-xl space-y-4"
+      >
         <select
+          required
           name="villa"
           value={form.villa}
           onChange={handleChange}
@@ -170,6 +168,7 @@ export default function BlockedDates() {
 
         <div className="grid grid-cols-2 gap-4">
           <input
+            required
             type="date"
             name="checkIn"
             value={form.checkIn}
@@ -178,6 +177,7 @@ export default function BlockedDates() {
             className="p-3 rounded bg-[#111827]"
           />
           <input
+            required
             type="date"
             name="checkOut"
             value={form.checkOut}
@@ -188,6 +188,7 @@ export default function BlockedDates() {
         </div>
 
         <input
+          required
           type="text"
           name="reason"
           placeholder="Reason"
@@ -197,6 +198,7 @@ export default function BlockedDates() {
         />
 
         <select
+          required
           name="source"
           value={form.source}
           onChange={handleChange}
@@ -211,13 +213,13 @@ export default function BlockedDates() {
         </select>
 
         <button
-          onClick={addEntry}
+          type="submit"
           disabled={loading}
           className="bg-blue-600 px-5 py-2 rounded hover:bg-blue-700"
         >
           {loading ? "Saving..." : "Add Entry"}
         </button>
-      </div>
+      </form>
 
       {/* ================= LIST ================= */}
       <div className="mt-10">

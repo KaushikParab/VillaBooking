@@ -1,5 +1,6 @@
 import Villa from "../models/villa.model.js";
 import Booking from "../models/booking.model.js";
+import AvailabilityBlock from "../models/availabilityBlock.model.js";
 
 // ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
@@ -14,6 +15,8 @@ export const registerVilla = async (req, res) => {
       guests,
       price,
       amenities,
+      totalRooms,
+      meals,
     } = req.body;
 
     const images = req.files?.map((file) => file.filename);
@@ -35,6 +38,7 @@ export const registerVilla = async (req, res) => {
       });
     }
 
+    const mealsData = meals ? JSON.parse(meals) : {};
     await Villa.create({
       villaName,
       villaContactNo,
@@ -43,6 +47,8 @@ export const registerVilla = async (req, res) => {
       guests,
       price,
       amenities,
+      totalRooms,
+      meals: mealsData,
       images,
       owner: id,
     });
@@ -63,7 +69,7 @@ export const getOwnerVillas = async (req, res) => {
   try {
     const villas = await Villa.find({ owner: id }).populate(
       "owner",
-      "name email"
+      "name email",
     );
 
     return res.status(200).json({ villas, success: true });
@@ -80,12 +86,21 @@ export const getAllVillas = async (req, res) => {
       maxPrice,
       page = 1,
       limit = 6,
-      sort = "latest", // priceLow | priceHigh | rating | latest
+      sort = "latest",
       location,
-      guests,
+      adults = 0,
+      children = 0,
+      infants = 0,
       checkIn,
       checkOut,
+      rating,
+      bedrooms,
+      amenities,
+      city,
+      meals,
     } = req.query;
+
+    const totalGuests = Number(adults) + Number(children) + Number(infants);
 
     let filter = {};
 
@@ -112,25 +127,87 @@ export const getAllVillas = async (req, res) => {
     // -------- LOCATION FILTER --------
     if (location) {
       filter.villaAddress = {
-        $regex: location,
-        $options: "i", // case-insensitive
+        $regex: new RegExp(location.trim(), "i"),
       };
     }
 
     // -------- GUEST FILTER --------
-    if (guests) {
-      filter.guests = { $gte: Number(guests) };
+    if (totalGuests > 0) {
+      filter.guests = { $gte: totalGuests };
     }
 
     /* ---------- DATE AVAILABILITY ---------- */
     if (checkIn && checkOut) {
-      const unavailableVillas = await Booking.distinct("villa", {
+      // BOOKED VILLAS
+      const bookedVillas = await Booking.distinct("villa", {
         status: { $ne: "cancelled" },
         checkIn: { $lte: new Date(checkOut) },
         checkOut: { $gte: new Date(checkIn) },
       });
 
+      // MANUALLY BLOCKED VILLAS
+      const blockedVillas = await AvailabilityBlock.distinct("villa", {
+        checkIn: { $lte: new Date(checkOut) },
+        checkOut: { $gte: new Date(checkIn) },
+      });
+
+      // MERGE BOTH
+      const unavailableVillas = [
+        ...new Set([...bookedVillas, ...blockedVillas]),
+      ];
+
       filter._id = { $nin: unavailableVillas };
+    }
+
+    // RATING
+    if (rating) {
+      filter.rating = { $gte: Number(rating) };
+    }
+
+    // BEDROOM FILTER
+    if (bedrooms) {
+      filter.totalRooms = { $gte: Number(bedrooms) };
+    }
+
+    // CITY
+    if (city) {
+      filter.villaAddress = {
+        $regex: new RegExp(city, "i"),
+      };
+    }
+
+    // COMBINED FILTERS
+    let andConditions = [];
+
+    // AMENITIES
+    if (amenities) {
+      const amenitiesArray = amenities
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean);
+
+      amenitiesArray.forEach((amenity) => {
+        andConditions.push({
+          amenities: { $regex: new RegExp(`\\b${amenity}\\b`, "i") },
+        });
+      });
+    }
+
+    // MEALS FILTER
+    if (meals) {
+      const mealsArray = meals
+        .split(",")
+        .map((m) => m.trim().toLowerCase())
+        .filter(Boolean);
+
+      mealsArray.forEach((meal) => {
+        filter[`meals.${meal}`] = true;
+      });
+    }
+
+    // APPLY
+    if (andConditions.length > 0) {
+      filter.$and = andConditions;
     }
 
     // -------- SORT --------
@@ -149,7 +226,8 @@ export const getAllVillas = async (req, res) => {
       .populate("owner", "name email")
       .sort(sortOption)
       .skip(skip)
-      .limit(Number(limit));
+      .limit(Number(limit))
+      .lean();
 
     return res.status(200).json({
       success: true,
@@ -164,6 +242,35 @@ export const getAllVillas = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// ================= GET SINGLE VILLA =================
+export const getSingleVilla = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const villa = await Villa.findById(id)
+      .populate("owner", "name email")
+      .lean();
+
+    if (!villa) {
+      return res.status(404).json({
+        success: false,
+        message: "Villa not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      villa,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
       success: false,
       message: "Internal server error",
     });
@@ -189,8 +296,6 @@ export const deleteVilla = async (req, res) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
-
-
 
 // ================= MOST POPULAR VILLAS =================
 export const getPopularVillas = async (req, res) => {

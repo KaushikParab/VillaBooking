@@ -19,12 +19,16 @@ function MostPicked() {
       <div className="max-w-6xl mx-auto mt-10 px-4">
         {popularVillasLoading ? (
           <SkeletonGrid count={4} />
-        ) : (
+        ) : popularVillas.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {popularVillas.map((villa) => (
               <VillaCard key={villa._id} villa={villa} />
             ))}
           </div>
+        ) : (
+          <p className="text-center text-gray-400">
+            No popular villas available
+          </p>
         )}
       </div>
     </div>

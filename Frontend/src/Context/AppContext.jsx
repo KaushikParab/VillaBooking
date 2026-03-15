@@ -17,7 +17,11 @@ const AppContextProvider = ({ children }) => {
 
   // -------- FILTERS --------
   const [location, setLocation] = useState("");
-  const [guests, setGuests] = useState("");
+  const [guests, setGuests] = useState({
+    adults: 1,
+    children: 0,
+    infants: 0,
+  });
   const [dates, setDates] = useState({
     checkIn: "",
     checkOut: "",
@@ -72,21 +76,24 @@ const AppContextProvider = ({ children }) => {
   };
   // ================= TOGGLE FAVOURITE =================
   const toggleFavourite = async (villaId) => {
-    // optimistic update
     const isFav = favourites.some((v) => v._id === villaId);
+
+    const villa =
+      villaData.find((v) => v._id === villaId) ||
+      searchVillas.find((v) => v._id === villaId) ||
+      popularVillas.find((v) => v._id === villaId);
 
     if (isFav) {
       setFavourites((prev) => prev.filter((v) => v._id !== villaId));
-    } else {
-      const villa = villaData.find((v) => v._id === villaId);
-      if (villa) setFavourites((prev) => [...prev, villa]);
+    } else if (villa) {
+      setFavourites((prev) => [...prev, villa]);
     }
 
     try {
       await axios.post(`/api/favourites/toggle/${villaId}`);
     } catch (error) {
       toast.error("Failed to update favourite");
-      fetchFavourites(); // rollback
+      fetchFavourites(); 
     }
   };
 
@@ -100,6 +107,9 @@ const AppContextProvider = ({ children }) => {
         params: {
           page: 1,
           limit: 6,
+          adults: filters.adults ?? guests.adults,
+          children: filters.children ?? guests.children,
+          infants: filters.infants ?? guests.infants,
           ...filters,
         },
       });
@@ -127,7 +137,9 @@ const AppContextProvider = ({ children }) => {
           limit: 6,
           sort,
           location,
-          guests,
+          adults: guests.adults,
+          children: guests.children,
+          infants: guests.infants,
           checkIn: dates.checkIn,
           checkOut: dates.checkOut,
           minPrice: priceRange.minPrice,
@@ -138,12 +150,13 @@ const AppContextProvider = ({ children }) => {
       if (data.success) {
         if (search) {
           setSearchVillas(data.villas);
-          // setIsSearching(true);
         } else {
-          setVillaData(data.villas);
+          setVillaData((prev) =>
+            villaPage === 1 ? data.villas : [...prev, ...data.villas],
+          );
+
+          setVillaHasMore(data.pagination?.hasMore ?? false);
         }
-      } else {
-        toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message);
@@ -245,7 +258,11 @@ const AppContextProvider = ({ children }) => {
     const filters = JSON.parse(savedFilters);
 
     setLocation(filters.location || "");
-    setGuests(filters.guests || "");
+    setGuests({
+      adults: filters.adults || 1,
+      children: filters.children || 0,
+      infants: filters.infants || 0,
+    });
     setDates({
       checkIn: filters.checkIn || "",
       checkOut: filters.checkOut || "",

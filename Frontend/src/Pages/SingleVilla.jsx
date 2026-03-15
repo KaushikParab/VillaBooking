@@ -1,6 +1,7 @@
 import { useContext, useState, useRef, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import GuestSelector from "../Components/GuestSelector";
 import {
   Star,
   CheckCircle,
@@ -19,30 +20,121 @@ import {
   Phone,
   Home,
   Calendar,
+  UtensilsCrossed,
 } from "lucide-react";
 import { MdLocationPin } from "react-icons/md";
 import toast from "react-hot-toast";
 import TextReviews from "../Components/TextReviews";
+
+const SingleVillaLoader = () => {
+  return (
+    <div className="min-h-screen bg-[#0D0D0D80] py-8 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 space-y-8">
+        {/* HEADER */}
+        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+          <div className="flex flex-col lg:flex-row justify-between gap-6">
+            <div className="space-y-4 w-full">
+              <div className="h-8 w-64 bg-gray-700 rounded"></div>
+              <div className="h-4 w-48 bg-gray-700 rounded"></div>
+              <div className="flex gap-4">
+                <div className="h-4 w-16 bg-gray-700 rounded"></div>
+                <div className="h-4 w-24 bg-gray-700 rounded"></div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="h-8 w-32 bg-gray-700 rounded"></div>
+              <div className="h-4 w-28 bg-gray-700 rounded"></div>
+              <div className="h-4 w-24 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* IMAGE SECTION */}
+        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+          <div className="h-8 w-40 bg-gray-700 rounded mb-6"></div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-96 bg-gray-700 rounded-xl"></div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* ROOMS */}
+        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+          <div className="h-8 w-48 bg-gray-700 rounded mb-6"></div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-[#0f0f0f] rounded-xl overflow-hidden">
+                <div className="h-56 bg-gray-700"></div>
+
+                <div className="p-4 space-y-3">
+                  <div className="h-5 w-40 bg-gray-700 rounded"></div>
+                  <div className="h-4 w-24 bg-gray-700 rounded"></div>
+                  <div className="h-10 w-full bg-gray-700 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function SingleVilla() {
   const { villaData, roomData, axios, user } = useContext(AppContext);
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const villa = villaData.find((v) => v._id === id);
+  const [villa, setVilla] = useState(null);
   const location = useLocation();
   const [selectedImage, setSelectedImage] = useState(0);
   const [bookingData, setBookingData] = useState({
     checkIn: "",
     checkOut: "",
-    persons: 1,
+    adults: 1,
+    children: 0,
+    infants: 0,
   });
+  const totalPersons =
+    bookingData.adults + bookingData.children + bookingData.infants;
   const [isAvailable, setIsAvailable] = useState(false);
   const [pricePreview, setPricePreview] = useState(null);
 
   const onChangeHandler = (e) => {
     setBookingData({ ...bookingData, [e.target.name]: e.target.value });
   };
+
+  useEffect(() => {
+    const existingVilla = villaData.find((v) => v._id === id);
+
+    if (existingVilla) {
+      setVilla(existingVilla);
+      return;
+    }
+
+    const fetchVilla = async () => {
+      try {
+        const { data } = await axios.get(`/api/villa/${id}`);
+        if (data.success) {
+          setVilla(data.villa);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchVilla();
+  }, [id, villaData]);
+
   useEffect(() => {
     if (location.state?.bookingData) {
       setBookingData(location.state.bookingData);
@@ -51,18 +143,27 @@ function SingleVilla() {
   }, [location.state]);
 
   useEffect(() => {
+    if (!villa) return;
+
     fetchPricePreview();
-  }, [bookingData.checkIn, bookingData.checkOut, bookingData.persons]);
+  }, [villa, bookingData.checkIn, bookingData.checkOut, totalPersons]);
+
+  useEffect(() => {
+    console.log("Current villa ID:", id);
+    console.log("Loaded villas:", villaData);
+  }, [villaData]);
 
   const fetchPricePreview = async () => {
-    if (!bookingData.checkIn || !bookingData.checkOut) return;
+    if (!villa || !bookingData.checkIn || !bookingData.checkOut) return;
 
     try {
       const { data } = await axios.post("/api/bookings/preview-price", {
         villa: villa._id,
         checkInDate: bookingData.checkIn,
         checkOutDate: bookingData.checkOut,
-        persons: bookingData.persons,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        infants: bookingData.infants,
       });
 
       if (data.success) {
@@ -80,8 +181,8 @@ function SingleVilla() {
   };
 
   /* ================= ROOMS ================= */
-  const villaRooms = roomData.filter((room) => room.villa?._id === villa?._id);
-
+  const villaRooms =
+    roomData?.filter((room) => room.villa?._id === villa?._id) || [];
   const [roomImageIndex, setRoomImageIndex] = useState({});
   const touchStartX = useRef({});
 
@@ -113,8 +214,9 @@ function SingleVilla() {
   };
 
   if (!villa) {
-    return <div className="text-white text-center py-20">Loading...</div>;
+    return <SingleVillaLoader />;
   }
+  const maxGuests = villa?.guests || 1;
 
   const getAmenityIcon = (amenity) => {
     const map = {
@@ -129,6 +231,16 @@ function SingleVilla() {
       "Breakfast Included": Coffee,
     };
     return map[amenity] || CheckCircle;
+  };
+
+  const getMealIcon = (meal) => {
+    const map = {
+      breakfast: Coffee,
+      lunch: UtensilsCrossed,
+      dinner: UtensilsCrossed,
+    };
+
+    return map[meal] || CheckCircle;
   };
 
   const checkVillaAvailability = async () => {
@@ -160,6 +272,11 @@ function SingleVilla() {
   };
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    if (totalPersons > maxGuests) {
+      toast.error(`Only ${maxGuests} guests allowed`);
+      return;
+    }
+
     // Authentication of User logged in check
     if (!user) {
       toast.error("Please login to book a room");
@@ -181,7 +298,10 @@ function SingleVilla() {
           villa: villa._id,
           checkInDate: bookingData.checkIn,
           checkOutDate: bookingData.checkOut,
-          persons: bookingData.persons,
+          persons: totalPersons,
+          adults: bookingData.adults,
+          children: bookingData.children,
+          infants: bookingData.infants,
           paymentMethod: "Pay At Villa",
         });
         if (data.success) {
@@ -240,7 +360,7 @@ function SingleVilla() {
 
                 <div className="flex items-center gap-2 justify-end">
                   <Phone className="w-5 h-5" />
-                  <span>{villa.villaContactNo}</span>
+                  <span>+91 - {villa.villaContactNo}</span>
                 </div>
               </div>
             </div>
@@ -346,26 +466,69 @@ function SingleVilla() {
             })}
           </div>
         </div>
-        <div className="grid lg:grid-cols-2 gap-8 ">
-          {/* AMENITIES */}
-          <div className="bg-[#1E1E1E]/80 rounded-2xl p-8 mt-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Amenities</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {villa.amenities.split(",").map((amenity, i) => {
-                const Icon = getAmenityIcon(amenity);
-                return (
-                  <div key={i} className="flex gap-3 bg-blue-50 p-3 rounded-lg">
-                    <Icon className="text-blue-600" />
-                    <span className="text-gray-700">{amenity}</span>
-                  </div>
-                );
-              })}
+        <div className="grid lg:grid-cols-3 gap-8 mt-8">
+          {/* LEFT SIDE */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* AMENITIES */}
+            <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6">Amenities</h2>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {villa?.amenities?.split(",").map((amenity, i) => {
+                  const Icon = getAmenityIcon(amenity);
+
+                  return (
+                    <div
+                      key={i}
+                      className="flex gap-3 bg-blue-50 p-3 rounded-lg"
+                    >
+                      <Icon className="text-blue-600" />
+                      <span className="text-gray-700">{amenity}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* MEALS */}
+            <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+              <h2 className="text-2xl font-bold text-white mb-6">
+                Meals Available
+              </h2>
+
+              {villa?.meals &&
+              Object.values(villa.meals).some((meal) => meal === true) ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {Object.entries(villa.meals)
+                    .filter(([_, value]) => value === true)
+                    .map(([meal], i) => {
+                      const Icon = getMealIcon(meal);
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center gap-3 bg-blue-50 p-3 rounded-lg"
+                        >
+                          <Icon className="text-blue-600" />
+                          <span className="text-gray-700 capitalize">
+                            {meal}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 bg-[#0f0f0f] text-white/70 p-4 rounded-lg">
+                  <Utensils className="text-red-400" />
+                  <span>No meals are provided at this villa.</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Booking Form */}
           <div className="lg:col-span-1">
-            <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky mt-8">
+            <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky">
               <h2 className="text-2xl font-bold mb-6">Book This Villa</h2>
               <form onSubmit={onSubmitHandler} className="space-y-4">
                 <div>
@@ -405,19 +568,11 @@ function SingleVilla() {
                 </div>
 
                 <div>
-                  <label
-                    className="block text-sm font-medium text-[#ffffff]/80 mb-2"
-                    htmlFor=""
-                  >
-                    <UserIcon className="w-4 h-4 inline mr-2" />
-                    Number of Guests
-                  </label>
-                  <input
-                    type="number"
-                    value={bookingData.persons}
-                    name="persons"
-                    onChange={onChangeHandler}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  {/* Guests Selector */}
+                  <GuestSelector
+                    bookingData={bookingData}
+                    setBookingData={setBookingData}
+                    maxGuests={maxGuests}
                   />
                 </div>
 
@@ -446,7 +601,10 @@ function SingleVilla() {
 
                       <div className="flex justify-between mb-2">
                         <span>Guests</span>
-                        <span>{pricePreview.persons}</span>
+                        <span>
+                          {bookingData.adults} Adults • {bookingData.children}{" "}
+                          Children • {bookingData.infants} Infants
+                        </span>
                       </div>
 
                       <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">

@@ -1,10 +1,11 @@
 import React, { useContext } from "react";
 import { AppContext } from "../Context/AppContext";
 import RoomCard from "./RoomCard";
-import SkeletonGrid from "./SkeletonGrid";
+import SkeletonRoomGrid from "./SkeletonRoomGrid";
 
 function PopularRooms() {
-  const { popularRooms, popularRoomsLoading } = useContext(AppContext);
+  const { popularRooms, popularRoomsLoading } =
+    useContext(AppContext);
 
   return (
     <div className="py-16">
@@ -16,13 +17,21 @@ function PopularRooms() {
         Based on bookings from last 7 days
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto mt-12">
-        {popularRoomsLoading ? (
-          <SkeletonGrid count={4} />
+      <div className="max-w-7xl mx-auto mt-12 px-4">
+
+        {popularRoomsLoading && popularRooms.length === 0 ? (
+          <SkeletonRoomGrid count={4} />
         ) : (
-          popularRooms.map((room) => (
-            <RoomCard key={room._id} room={room} />
-          ))
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {popularRooms.map((room) => (
+                <RoomCard key={room._id} room={room} />
+              ))}
+            </div>       
+            {popularRoomsLoading && (
+              <SkeletonRoomGrid count={2} />
+            )}
+          </>
         )}
       </div>
     </div>

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import VillaCard from "../Components/VillaCard";
+import SkeletonGrid from "../Components/SkeletonGrid";
 
 function Villas() {
   const [villaData, setVillaData] = useState([]);
@@ -12,13 +13,16 @@ function Villas() {
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
 
+  const [initialLoading, setInitialLoading] = useState(true);
+
   const loaderRef = useRef(null);
 
   // ================= FETCH VILLAS (PAGINATED) =================
   const fetchVillas = async (reset = false) => {
-    if (loading || !hasMore) return;
+    if (loading || (!hasMore && !reset)) return;
 
     setLoading(true);
+    if (reset) setInitialLoading(true);
 
     try {
       const { data } = await axios.get(
@@ -30,12 +34,12 @@ function Villas() {
             minPrice: minPrice || undefined,
             maxPrice: maxPrice || undefined,
           },
-        }
+        },
       );
 
       if (data.success) {
         setVillaData((prev) =>
-          reset ? data.villas : [...prev, ...data.villas]
+          reset ? data.villas : [...prev, ...data.villas],
         );
         setHasMore(data.pagination.hasMore);
       }
@@ -43,15 +47,16 @@ function Villas() {
       console.error("Error fetching villas", error);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
-  // ================= LOAD ON PAGE CHANGE =================
+  
   useEffect(() => {
     fetchVillas();
   }, [page]);
 
-  // ================= RESET ON FILTER CHANGE =================
+  
   useEffect(() => {
     setVillaData([]);
     setPage(1);
@@ -59,7 +64,7 @@ function Villas() {
     fetchVillas(true);
   }, [minPrice, maxPrice]);
 
-  // ================= INFINITE SCROLL =================
+  //  INFINITE SCROLL 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -67,7 +72,7 @@ function Villas() {
           setPage((prev) => prev + 1);
         }
       },
-      { threshold: 1 }
+      { threshold: 1 },
     );
 
     if (loaderRef.current) observer.observe(loaderRef.current);
@@ -81,43 +86,30 @@ function Villas() {
         All Villas
       </h1>
 
-      {/* ================= FILTER ================= */}
-      <div className="flex justify-center gap-4 my-6">
-        <input
-          type="number"
-          placeholder="Min Price"
-          value={minPrice}
-          onChange={(e) => setMinPrice(e.target.value)}
-          className="px-4 py-2 rounded text-black"
-        />
+      {/*  VILLAS GRID  */}
 
-        <input
-          type="number"
-          placeholder="Max Price"
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-          className="px-4 py-2 rounded text-black"
-        />
-      </div>
+      {initialLoading ? (
+        <SkeletonGrid count={6} />
+      ) : villaData.length > 0 ? (  
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {villaData.map((villa) => (
+              <VillaCard key={villa._id} villa={villa} />
+            ))}
+          </div>
 
-      {/* ================= VILLAS GRID ================= */}
-      {villaData.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {villaData.map((villa) => (
-            <VillaCard key={villa._id} villa={villa} />
-          ))}
-        </div>
+          {loading && <SkeletonGrid count={3} />}
+        </>
       ) : (
-        !loading && <p className="text-white mt-6 text-center">No villas found</p>
+        <p className="text-white mt-6 text-center">No villas found</p>
       )}
 
-      {/* ================= LOADER ================= */}
+      {/*  LOADER  */}
       {hasMore && (
-        <div
-          ref={loaderRef}
-          className="text-center text-white my-6"
-        >
-          {loading ? "Loading more villas..." : "Scroll to load more"}
+        <div ref={loaderRef} className="text-center text-white my-6">
+          <span className="text-gray-400 text-sm">
+            {hasMore ? "Scroll to load more" : "No more villas"}
+          </span>
         </div>
       )}
     </div>

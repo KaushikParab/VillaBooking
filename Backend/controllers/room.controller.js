@@ -1,6 +1,6 @@
 import Room from "../models/room.model.js";
 import Booking from "../models/booking.model.js";
-
+import Villa from "../models/villa.model.js";
 
 // add a new Room
 export const addRoom = async (req, res) => {
@@ -8,21 +8,31 @@ export const addRoom = async (req, res) => {
     const {
       roomType,
       villa,
+      guests,
       pricePerNight,
       description,
       amenities,
       isAvailable,
+      meals,
     } = req.body;
     const image = req.files?.map((file) => file.filename);
+    const mealsData = meals ? JSON.parse(meals) : {};
     const newRoom = await Room.create({
       roomType,
       villa,
+      guests,
       pricePerNight,
       description,
       amenities,
       isAvailable,
+      meals: mealsData,
       images: image,
     });
+
+    await Villa.findByIdAndUpdate(villa, {
+      $inc: { totalRooms: 1 },
+    });
+
     return res
       .status(201)
       .json({ message: "Room added successfully", success: true });
@@ -36,14 +46,13 @@ export const getOwnerRooms = async (req, res) => {
   try {
     const { id } = req.user;
 
-    const rooms = await Room.find()
-      .populate({
-        path: "villa",
-        select: "villaName villaAddress rating amenities owner",
-      });
+    const rooms = await Room.find().populate({
+      path: "villa",
+      select: "villaName villaAddress rating amenities owner villaContactNo",
+    });
 
     const ownerRooms = rooms.filter(
-      (room) => room.villa && room.villa.owner.toString() === id
+      (room) => room.villa && room.villa.owner.toString() === id,
     );
 
     return res.status(200).json({
@@ -56,7 +65,6 @@ export const getOwnerRooms = async (req, res) => {
   }
 };
 
-
 // Get all rooms for USers
 export const getAllRooms = async (req, res) => {
   try {
@@ -68,7 +76,7 @@ export const getAllRooms = async (req, res) => {
     const rooms = await Room.find()
       .populate({
         path: "villa",
-        select: "villaName villaAddress amenities rating owner",
+        select: "villaName villaAddress amenities rating owner villaContactNo",
         populate: { path: "owner", select: "name email" },
       })
       .sort({ createdAt: -1 })
@@ -89,24 +97,34 @@ export const getAllRooms = async (req, res) => {
   }
 };
 
-
 // Delete Room
 export const deleteRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const deletedRoom = await Room.findByIdAndDelete(roomId);
-    if (!deletedRoom) {
+
+    const room = await Room.findById(roomId);
+
+    if (!room) {
       return res
         .status(404)
         .json({ success: false, message: "Room not found" });
     }
-    res.json({ success: true, message: "Room deleted successfully" });
+
+    await Room.findByIdAndDelete(roomId);
+
+    await Villa.findByIdAndUpdate(room.villa, {
+      $inc: { totalRooms: -1 },
+    });
+
+    res.json({
+      success: true,
+      message: "Room deleted successfully",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // ================= MOST POPULAR ROOMS =================
 export const getPopularRooms = async (req, res) => {

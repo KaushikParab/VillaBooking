@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useRef } from "react";
 import { AppContext } from "../Context/AppContext";
 import RoomCard from "../Components/RoomCard";
+import SkeletonRoomGrid from "../Components/SkeletonRoomGrid";
 
 function Rooms() {
   const { roomData, setRoomPage, roomHasMore, roomLoading } =
@@ -25,15 +26,26 @@ function Rooms() {
         All Rooms
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-12">
-        {roomData.map((room) => (
-          <RoomCard key={room._id} room={room} />
-        ))}
-      </div>
+      {/* ================= ROOMS GRID ================= */}
+
+      {roomLoading && roomData.length === 0 ? (
+        <SkeletonRoomGrid count={8} />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mt-12">
+            {roomData.map((room) => (
+              <RoomCard key={room._id} room={room} />
+            ))}
+          </div>
+          {roomLoading && <SkeletonRoomGrid count={4} />}
+        </>
+      )}
 
       {roomHasMore && (
         <div ref={loaderRef} className="text-center text-white my-6">
-          {roomLoading ? "Loading more rooms..." : "Scroll to load more"}
+          <span className="text-gray-400 text-sm">
+            {roomHasMore ? "Scroll to load more" : "No more rooms"}
+          </span>
         </div>
       )}
     </div>

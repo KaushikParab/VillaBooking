@@ -53,7 +53,7 @@
           toast.success("Review added successfully");
           setText("");
           setRating(5);
-          fetchReviews(); // 🔥 Refresh reviews
+          fetchReviews();
         }
       } catch (error) {
         toast.error("Failed to submit review");
@@ -117,7 +117,7 @@
     )}
 
     {/* ================= REVIEW FORM ================= */}
-    <div className="mt-14 bg-[#1E1E1E]/80 border border-[#2A2A2A] rounded-2xl p-8">
+    <div className="mt-14 w-full md:w-[60%] mx-auto bg-[#1E1E1E]/80 border border-[#2A2A2A] rounded-2xl p-8">
       <h3 className="text-2xl font-bold text-white mb-1">
         Write a Review
       </h3>
@@ -184,6 +184,6 @@
     </div>
   </div>
 );
-  }
+}
 
-  export default TextReviews;
+export default TextReviews;

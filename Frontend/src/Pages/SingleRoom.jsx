@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
 import { useParams, useLocation } from "react-router-dom";
+import GuestSelector from "../Components/GuestSelector";
 
 import {
   Bath,
@@ -26,10 +27,95 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+const SingleRoomLoader = () => {
+  return (
+    <div className="min-h-screen bg-[#0D0D0D80] py-8 animate-pulse">
+      <div className="max-w-7xl mx-auto px-4 space-y-8">
+        {/* HEADER */}
+        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+          <div className="flex justify-between gap-6">
+            <div className="space-y-4 w-full">
+              <div className="h-8 w-64 bg-gray-700 rounded"></div>
+              <div className="h-4 w-40 bg-gray-700 rounded"></div>
+
+              <div className="flex gap-4">
+                <div className="h-4 w-16 bg-gray-700 rounded"></div>
+                <div className="h-4 w-24 bg-gray-700 rounded"></div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="h-8 w-32 bg-gray-700 rounded"></div>
+              <div className="h-4 w-24 bg-gray-700 rounded"></div>
+              <div className="h-4 w-20 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* IMAGE SECTION */}
+        <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+          <div className="h-8 w-40 bg-gray-700 rounded mb-6"></div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-96 bg-gray-700 rounded-xl"></div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+              <div className="h-24 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* DESCRIPTION + AMENITIES */}
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-[#1E1E1E]/80 rounded-2xl p-8 space-y-4">
+              <div className="h-6 w-40 bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-700 rounded"></div>
+              <div className="h-4 bg-gray-700 rounded"></div>
+              <div className="h-4 w-3/4 bg-gray-700 rounded"></div>
+            </div>
+
+            <div className="bg-[#1E1E1E]/80 rounded-2xl p-8">
+              <div className="h-6 w-32 bg-gray-700 rounded mb-6"></div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-12 bg-gray-700 rounded"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* BOOKING FORM */}
+          <div className="bg-[#1E1E1E]/80 rounded-2xl p-8 space-y-4">
+            <div className="h-6 w-40 bg-gray-700 rounded"></div>
+
+            <div className="h-12 bg-gray-700 rounded"></div>
+            <div className="h-12 bg-gray-700 rounded"></div>
+            <div className="h-12 bg-gray-700 rounded"></div>
+
+            <div className="h-20 bg-gray-700 rounded"></div>
+
+            <div className="h-12 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function SingleRoom() {
   const { roomData, axios, navigate, user } = useContext(AppContext);
   const { id } = useParams();
   const room = roomData.find((r) => r._id === id);
+  if (!room) {
+    return <SingleRoomLoader />;
+  }
+  const maxGuests = room?.guests || 1;
+
   const location = useLocation();
   useEffect(() => {
     if (location.state?.bookingData) {
@@ -42,18 +128,27 @@ function SingleRoom() {
   const [bookingData, setBookingData] = useState({
     checkIn: "",
     checkOut: "",
-    persons: 1,
+    adults: 1,
+    children: 0,
+    infants: 0,
   });
+  const totalPersons =
+    bookingData.adults + bookingData.children + bookingData.infants;
   const [isAvailable, setIsAvailable] = useState(false);
   const [pricePreview, setPricePreview] = useState(null);
 
   const onChangeHandler = (e) => {
-    setBookingData({ ...bookingData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    setBookingData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   useEffect(() => {
     fetchPricePreview();
-  }, [bookingData.checkIn, bookingData.checkOut, bookingData.persons]);
+  }, [bookingData.checkIn, bookingData.checkOut, totalPersons]);
 
   const fetchPricePreview = async () => {
     if (!bookingData.checkIn || !bookingData.checkOut) return;
@@ -63,7 +158,9 @@ function SingleRoom() {
         room: room._id,
         checkInDate: bookingData.checkIn,
         checkOutDate: bookingData.checkOut,
-        persons: bookingData.persons,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        infants: bookingData.infants,
       });
 
       if (data.success) {
@@ -113,12 +210,16 @@ function SingleRoom() {
         toast.error("Check-In date should be before Check-Out date");
         return;
       }
+
       const { data } = await axios.post("/api/bookings/preview-price", {
         room: room._id,
         checkInDate: bookingData.checkIn,
         checkOutDate: bookingData.checkOut,
-        persons: bookingData.persons,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        infants: bookingData.infants,
       });
+
       if (data.success) {
         if (data.isAvailable) {
           setIsAvailable(true);
@@ -154,11 +255,19 @@ function SingleRoom() {
       if (!isAvailable) {
         return checkRoomAvailability();
       } else {
+        if (totalPersons > maxGuests) {
+          toast.error(`Maximum ${maxGuests} guests allowed`);
+          return;
+        }
+
         const { data } = await axios.post("/api/bookings/book", {
           room: room._id,
           checkInDate: bookingData.checkIn,
           checkOutDate: bookingData.checkOut,
-          persons: bookingData.persons,
+          persons: totalPersons,
+          adults: bookingData.adults,
+          children: bookingData.children,
+          infants: bookingData.infants,
           paymentMethod: "Pay At Villa",
         });
         if (data.success) {
@@ -228,7 +337,7 @@ function SingleRoom() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Phone className="w-5 h-5 text-gray-500 " />
-                  <span>+915675462547</span>
+                  <span>+91 - {room.villa.villaContactNo}</span>
                 </div>
               </div>
             </div>
@@ -265,7 +374,7 @@ function SingleRoom() {
           </div>
         </div>
 
-        {/* About or Details about perticular room */}
+        {/* Description */}
         <div className="grid lg:grid-cols-3 gap-8 ">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8">
@@ -295,6 +404,33 @@ function SingleRoom() {
                 })}
               </div>
             </div>
+          </div>
+
+          {/* MEALS */}
+          <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold mb-6">Meals Available</h2>
+
+            {room?.meals &&
+            Object.values(room.meals).some((m) => m === true) ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {Object.entries(room.meals)
+                  .filter(([_, value]) => value === true)
+                  .map(([meal], i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg"
+                    >
+                      <Coffee className="text-blue-600" />
+                      <span className="text-gray-700 capitalize">{meal}</span>
+                    </div>
+                  ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 bg-[#0f0f0f] text-white/70 p-4 rounded-lg">
+                <Utensils className="text-red-400" />
+                <span>No meals available for this room.</span>
+              </div>
+            )}
           </div>
 
           {/* Booking Form */}
@@ -338,22 +474,11 @@ function SingleRoom() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    className="block text-sm font-medium text-[#ffffff]/80 mb-2"
-                    htmlFor=""
-                  >
-                    <UserIcon className="w-4 h-4 inline mr-2" />
-                    Number of Guests
-                  </label>
-                  <input
-                    type="number"
-                    value={bookingData.persons}
-                    name="persons"
-                    onChange={onChangeHandler}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+                <GuestSelector
+                  bookingData={bookingData}
+                  setBookingData={setBookingData}
+                  maxGuests={maxGuests}
+                />
 
                 <div className="border-t pt-4 mt-6">
                   <div className="border-t pt-4 mt-6">
@@ -382,15 +507,6 @@ function SingleRoom() {
                           <span>Guests</span>
                           <span>{pricePreview.persons}</span>
                         </div>
-
-                        {pricePreview.discountPercent > 0 && (
-                          <div className="flex justify-between mb-2">
-                            <span>Discount</span>
-                            <span className="text-blue-400 font-medium">
-                              {pricePreview.discountPercent}% Off
-                            </span>
-                          </div>
-                        )}
 
                         <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">
                           <span>Total Price</span>
