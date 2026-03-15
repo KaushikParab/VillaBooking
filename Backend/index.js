@@ -30,7 +30,7 @@ app.get("/", (req, res) => {
   res.send("hello world from server");
 });
 
-app.use("/images", express.static("uploads"));
+//app.use("/images", express.static("uploads"));
 app.use("/api/user", userRouter);
 app.use("/api/villa", villaRouter);
 app.use("/api/room", roomRouter);
@@ -39,7 +39,7 @@ app.use("/api/reviews", reviewRouter);
 app.use("/api/favourites", favouriteRouter);
 app.use("/api/availability", availabilityRouter);
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 
 app.listen(PORT, () => {
   console.log(`server is running on port ${PORT}`);

@@ -1,6 +1,8 @@
 import Villa from "../models/villa.model.js";
 import Booking from "../models/booking.model.js";
 import AvailabilityBlock from "../models/availabilityBlock.model.js";
+import cloudinary from "../config/cloudinary.js";
+
 
 // ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
@@ -19,7 +21,35 @@ export const registerVilla = async (req, res) => {
       meals,
     } = req.body;
 
-    const images = req.files?.map((file) => file.filename);
+    // ===== Upload Images to Cloudinary =====
+    let imageUrls = [];
+
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map((file) => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream(
+              {
+                folder: "villas",
+                resource_type: "image",
+
+                transformation: [
+                  { width: 1200, crop: "limit" },
+                  { quality: "auto" },
+                  { fetch_format: "auto" },
+                ],
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+              },
+            )
+            .end(file.buffer);
+        });
+      });
+
+      imageUrls = await Promise.all(uploadPromises);
+    }
 
     if (
       !villaName ||
@@ -29,8 +59,7 @@ export const registerVilla = async (req, res) => {
       guests === undefined ||
       price === undefined ||
       !amenities ||
-      !images ||
-      images.length === 0
+      imageUrls.length === 0
     ) {
       return res.status(400).json({
         message: "All fields are required",
@@ -39,6 +68,7 @@ export const registerVilla = async (req, res) => {
     }
 
     const mealsData = meals ? JSON.parse(meals) : {};
+
     await Villa.create({
       villaName,
       villaContactNo,
@@ -49,7 +79,7 @@ export const registerVilla = async (req, res) => {
       amenities,
       totalRooms,
       meals: mealsData,
-      images,
+      images: imageUrls,
       owner: id,
     });
 

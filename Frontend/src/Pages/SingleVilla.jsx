@@ -374,7 +374,8 @@ function SingleVilla() {
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <img
-                src={`http://localhost:4000/images/${villa.images[selectedImage]}`}
+                src={villa.images[selectedImage]}
+                
                 className="w-full h-96 object-cover rounded-xl"
                 alt="Villa"
               />
@@ -384,7 +385,7 @@ function SingleVilla() {
               {villa.images.map((img, index) => (
                 <img
                   key={index}
-                  src={`http://localhost:4000/images/${img}`}
+                  src={villa.images[index]}
                   onClick={() => setSelectedImage(index)}
                   className={`h-24 object-cover rounded-lg cursor-pointer ${
                     selectedImage === index
@@ -420,7 +421,7 @@ function SingleVilla() {
                     }
                   >
                     <img
-                      src={`http://localhost:4000/images/${room.images[index]}`}
+                      src={room.images?.[index]}
                       className="w-full h-full object-cover"
                       alt={room.roomType}
                     />

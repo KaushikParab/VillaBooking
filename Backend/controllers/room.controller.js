@@ -1,6 +1,7 @@
 import Room from "../models/room.model.js";
 import Booking from "../models/booking.model.js";
 import Villa from "../models/villa.model.js";
+import cloudinary from "../config/cloudinary.js";
 
 // add a new Room
 export const addRoom = async (req, res) => {
@@ -15,7 +16,27 @@ export const addRoom = async (req, res) => {
       isAvailable,
       meals,
     } = req.body;
-    const image = req.files?.map((file) => file.filename);
+    let imageUrls = [];
+
+    if (req.files && req.files.length > 0) {
+      const uploads = req.files.map((file) => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream(
+              {
+                folder: "rooms",
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+              },
+            )
+            .end(file.buffer);
+        });
+      });
+
+      imageUrls = await Promise.all(uploads);
+    }
     const mealsData = meals ? JSON.parse(meals) : {};
     const newRoom = await Room.create({
       roomType,
@@ -26,7 +47,7 @@ export const addRoom = async (req, res) => {
       amenities,
       isAvailable,
       meals: mealsData,
-      images: image,
+      images: imageUrls,
     });
 
     await Villa.findByIdAndUpdate(villa, {
@@ -37,7 +58,11 @@ export const addRoom = async (req, res) => {
       .status(201)
       .json({ message: "Room added successfully", success: true });
   } catch (error) {
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("ADD ROOM ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

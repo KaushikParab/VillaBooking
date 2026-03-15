@@ -17,7 +17,7 @@ function RoomCard({ room }) {
       >
         {/* Room Image */}
         <img
-          src={`http://localhost:4000/images/${room.images[0]}`}
+          src={room.images?.[0]}
           alt={room.roomType}
           className="
             w-full h-52 object-cover 

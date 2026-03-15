@@ -88,12 +88,12 @@ function Bookings() {
                     <div className="md:col-span-4 flex gap-4">
                       <img
                         src={
-                          booking.villa?.images?.[0]
-                            ? `http://localhost:4000/images/${booking.villa.images[0]}`
+                          booking.villa?.images?.length
+                            ? booking.villa.images[0]
                             : "/no-image.png"
                         }
                         className="w-24 h-20 rounded-lg object-cover"
-                        alt="villa"
+                        alt={booking.villa?.villaName}
                       />
 
                       <div>
@@ -154,12 +154,12 @@ function Bookings() {
                     <div className="md:col-span-2 flex items-center gap-2">
                       <StatusIcon
                         className={`w-4 h-4 ${getStatusTextColor(
-                          booking.status
+                          booking.status,
                         )}`}
                       />
                       <span
                         className={`capitalize ${getStatusTextColor(
-                          booking.status
+                          booking.status,
                         )}`}
                       >
                         {booking.status}

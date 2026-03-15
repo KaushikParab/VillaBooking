@@ -31,7 +31,7 @@ export default function VillaCard({ villa }) {
         <img
           src={
             villa.images?.length
-              ? `http://localhost:4000/images/${villa.images[0]}`
+              ? villa.images[0]
               : "/no-image.png"
           }
           alt={villa.villaName}

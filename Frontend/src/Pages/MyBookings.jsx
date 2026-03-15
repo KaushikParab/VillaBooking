@@ -201,7 +201,7 @@ const handlePayment = async (bookingId) => {
                       <img
                         src={
                           booking.villa?.images?.[0]
-                            ? `http://localhost:4000/images/${booking.villa.images[0]}`
+                            ? booking.villa.images[0]
                             : "https://via.placeholder.com/150"
                         }
                         className="w-24 h-20 rounded-lg object-cover"

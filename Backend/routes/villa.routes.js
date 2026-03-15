@@ -10,7 +10,8 @@ import {
   getPopularVillas,
   getSingleVilla,
 } from "../controllers/villa.controller.js";
-import { upload } from "../config/multer.js";
+// import { upload } from "../config/multer.js";
+import upload from "../middlewares/upload.js";
 
 const villaRouter = express.Router();
 

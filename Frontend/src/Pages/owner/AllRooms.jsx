@@ -97,7 +97,7 @@ function AllRooms() {
                       <div className="flex items-center space-x-4">
                         <div className="relative">
                           <img
-                            src={`http://localhost:4000/images/${room.images[0]}`}
+                            src={room.images?.[0]}
                             alt={room.roomType}
                             className="w-20 h-16 rounded-xl object-cover min-w-10 shadow-md"
                           />
