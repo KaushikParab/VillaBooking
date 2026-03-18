@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 
 function MyBookings() {
   const [cancellingId, setCancellingId] = useState(null);
+  const [payAtVillaLoadingId, setPayAtVillaLoadingId] = useState(null);
   const { axios } = useContext(AppContext);
   const [bookingData, setBookingData] = useState([]);
 
@@ -23,60 +24,58 @@ function MyBookings() {
   };
 
   // ================= PAY NOW (RAZORPAY) =================
-const handlePayment = async (bookingId) => {
-  try {
-    const { data } = await axios.post("/api/bookings/razorpay-order", {
-      bookingId,
-    });
+  const handlePayment = async (bookingId) => {
+    try {
+      const { data } = await axios.post("/api/bookings/razorpay-order", {
+        bookingId,
+      });
 
-    if (!data.success) {
-      toast.error("Failed to create order");
-      return;
-    }
+      if (!data.success) {
+        toast.error("Failed to create order");
+        return;
+      }
 
-    const options = {
-      key: data.key,
-      amount: data.order.amount,
-      currency: "INR",
-      order_id: data.order.id,
-      name: "Villa Booking",
-      description: "Complete your booking payment",
+      const options = {
+        key: data.key,
+        amount: data.order.amount,
+        currency: "INR",
+        order_id: data.order.id,
+        name: "Villa Booking",
+        description: "Complete your booking payment",
 
-      handler: async function (response) {
-        const verifyRes = await axios.post(
-          "/api/bookings/razorpay-verify",
-          {
+        handler: async function (response) {
+          const verifyRes = await axios.post("/api/bookings/razorpay-verify", {
             ...response,
             bookingId,
+          });
+
+          if (verifyRes.data.success) {
+            toast.success("Payment Successful!");
+            fetchMyBookings();
+          } else {
+            toast.error("Payment verification failed");
           }
-        );
+        },
 
-        if (verifyRes.data.success) {
-          toast.success("Payment Successful!");
-          fetchMyBookings();
-        } else {
-          toast.error("Payment verification failed");
-        }
-      },
+        prefill: {
+          name: "Guest",
+        },
 
-      prefill: {
-        name: "Guest",
-      },
+        theme: {
+          color: "#3399cc",
+        },
+      };
 
-      theme: {
-        color: "#3399cc",
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-  } catch (error) {
-    toast.error(error.message);
-  }
-};
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
 
   // ================= PAY AT VILLA =================
   const handlePayAtVilla = async (bookingId) => {
+    setPayAtVillaLoadingId(bookingId);
     try {
       const { data } = await axios.post("/api/bookings/pay-at-villa", {
         bookingId,
@@ -90,6 +89,8 @@ const handlePayment = async (bookingId) => {
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setPayAtVillaLoadingId(null);
     }
   };
 
@@ -119,6 +120,13 @@ const handlePayment = async (bookingId) => {
       toast.error(error.message);
       setCancellingId(null);
     }
+  };
+
+  const getCancelButtonText = (booking) => {
+    if (booking.paymentMethod === "Razorpay") {
+      return "Cancel & Refund";
+    }
+    return "Cancel Booking";
   };
 
   // ================= EFFECT =================
@@ -156,9 +164,9 @@ const handlePayment = async (bookingId) => {
   const canCancelBooking = (booking) => {
     if (booking.status === "cancelled") return false;
 
-    if (booking.status === "confirmed" && booking.paymentMethod === "Razorpay") {
-      return false;
-    }
+    // if (booking.status === "confirmed" && booking.paymentMethod === "Razorpay") {
+    //   return false;
+    // }
 
     const now = new Date();
     const checkIn = new Date(booking.checkIn);
@@ -261,9 +269,16 @@ const handlePayment = async (bookingId) => {
                         {!booking.isPaid && booking.status === "pending" && (
                           <button
                             onClick={() => handlePayAtVilla(booking._id)}
-                            className="text-blue-500 hover:text-white hover:bg-blue-600 px-3 py-1 rounded-md transition"
+                            disabled={payAtVillaLoadingId === booking._id}
+                            className={`px-3 py-1 rounded-md transition ${
+                              payAtVillaLoadingId === booking._id
+                                ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                                : "text-blue-500 hover:text-white hover:bg-blue-600"
+                            }`}
                           >
-                            Pay at Villa
+                            {payAtVillaLoadingId === booking._id
+                              ? "Processing..."
+                              : "Pay at Villa"}
                           </button>
                         )}
 
@@ -279,7 +294,7 @@ const handlePayment = async (bookingId) => {
                           >
                             {cancellingId === booking._id
                               ? "Cancelling..."
-                              : "Cancel Booking"}
+                              : getCancelButtonText(booking)}
                           </button>
                         )}
                       </div>

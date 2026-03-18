@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 const RegisterVilla = () => {
   const { axios, navigate } = useContext(AppContext);
   const [imageError, setImageError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const [data, setData] = useState({
     villaName: "",
@@ -53,6 +54,7 @@ const RegisterVilla = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     const formData = new FormData();
     formData.append("villaName", data.villaName);
@@ -78,6 +80,7 @@ const RegisterVilla = () => {
     }
 
     try {
+      setLoading(true);
       const { data: res } = await axios.post("/api/villa/register", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -90,6 +93,8 @@ const RegisterVilla = () => {
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -250,7 +255,7 @@ const RegisterVilla = () => {
             min={1}
             step={1}
             value={data.price}
-             onChange={(e) => handleNumberChange(e, 1, null, true)}
+            onChange={(e) => handleNumberChange(e, 1, null, true)}
             onKeyDown={(e) => {
               if (["e", "E", "+", "-", "."].includes(e.key)) {
                 e.preventDefault();
@@ -298,8 +303,17 @@ const RegisterVilla = () => {
         </div>
 
         {/* Submit Form */}
-        <button className="px-8 py-2.5 bg-[#6A0DAD] text-white font-medium rounded">
-          Register Villa
+        <button
+          type="submit"
+          disabled={loading}
+          className={`px-8 py-2.5 text-white font-medium rounded transition-all duration-200
+                        ${
+                          loading
+                            ? "bg-[#6A0DAD]/60 cursor-not-allowed"
+                            : "bg-[#6A0DAD] hover:bg-[#5a0aa0]"
+                        }`}
+        >
+          {loading ? "Registering..." : "Register Villa"}
         </button>
       </form>
     </div>

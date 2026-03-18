@@ -2,10 +2,11 @@ import { MapPin, Star, Users, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../Context/AppContext";
+import toast from "react-hot-toast";
 
 export default function VillaCard({ villa }) {
   const navigate = useNavigate();
-  const { favourites, toggleFavourite } = useContext(AppContext);
+  const { favourites, toggleFavourite, user } = useContext(AppContext);
 
   const [isFavourite, setIsFavourite] = useState(false);
 
@@ -15,6 +16,11 @@ export default function VillaCard({ villa }) {
 
   const handleFavourite = (e) => {
     e.stopPropagation();
+
+    if (!user) {
+      toast.error("Please login to add favourites");
+      return;
+    }
 
     setIsFavourite((prev) => !prev);
 
@@ -29,11 +35,7 @@ export default function VillaCard({ villa }) {
       {/* Image Section */}
       <div className="relative">
         <img
-          src={
-            villa.images?.length
-              ? villa.images[0]
-              : "/no-image.png"
-          }
+          src={villa.images?.length ? villa.images[0] : "/no-image.png"}
           alt={villa.villaName}
           className="w-full h-56 object-cover group-hover:scale-110 transition duration-500"
         />

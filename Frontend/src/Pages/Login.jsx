@@ -93,6 +93,8 @@ export default function Login() {
                 type="email"
                 autoComplete="email"
                 required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+                title="Please enter a valid email address (example: name@example.com)"
                 className="mt-1 w-full rounded-lg border border-[#333333] bg-[#1E1E1E80] px-3 py-2 text-[#FFFFFF] placeholder-[#888888] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c0b283] focus:border-[#FFD369]"
                 placeholder="name@example.com"
               />
@@ -136,13 +138,25 @@ export default function Login() {
                   className="absolute inset-y-0 right-2 my-auto inline-flex h-8 w-8 items-center justify-center rounded-md text-[#404a42] hover:text-[#192231] focus:outline-none focus:ring-2 focus:ring-[#c0b283]"
                 >
                   {showPassword ? (
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M3 3l18 18" />
                       <path d="M10.58 10.58a3 3 0 104.24 4.24" />
                       <path d="M9.88 5.09A9.94 9.94 0 0121 12" />
                     </svg>
                   ) : (
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
                       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>

@@ -56,13 +56,30 @@ const Navbar = () => {
           }`}
       >
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
-          <span
-            className="font-extrabold text-2xl md:text-3xl tracking-wide 
-               bg-gradient-to-r from-yellow-400 to-yellow-600 
-               bg-clip-text text-transparent drop-shadow-md"
-          >
-            Stavilo
+        <Link to="/" className="flex items-center gap-3 select-none">
+          <span className="flex font-extrabold text-2xl md:text-3xl tracking-wide">
+            {"Stavilo".split("").map((char, index) => (
+              <span
+                key={index}
+                className={`
+          inline-block cursor-pointer
+          transition-all duration-300
+          ease-[cubic-bezier(0.22,1,0.36,1)]
+          hover:scale-125
+          hover:-translate-y-1
+          hover:font-black
+          hover:drop-shadow-[0_0_10px_rgba(250,204,21,0.55)]
+          
+          ${
+            index === 0
+              ? "text-yellow-500 hover:text-amber-400 dark:hover:text-yellow-300"
+              : "text-zinc-800 dark:text-zinc-200 hover:text-yellow-500 dark:hover:text-yellow-400"
+          }
+        `}
+              >
+                {char}
+              </span>
+            ))}
           </span>
         </Link>
 

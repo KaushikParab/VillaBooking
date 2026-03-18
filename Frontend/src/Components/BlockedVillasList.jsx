@@ -26,17 +26,14 @@ export default function BlockedVillasList() {
     fetchBlocks();
   }, []);
 
- 
   const cancelBlock = async (id) => {
     try {
-      const { data } = await axios.delete(
-        `/api/availability/${id}`
-      );
+      const { data } = await axios.delete(`/api/availability/${id}`);
 
       if (data.success) {
         toast.success("Block removed");
 
-        setBlocks(prev => prev.filter(b => b._id !== id));
+        setBlocks((prev) => prev.filter((b) => b._id !== id));
       }
     } catch {
       toast.error("Failed to remove block");
@@ -49,11 +46,18 @@ export default function BlockedVillasList() {
     return <p className="text-gray-400 mt-6">Loading blocked villas...</p>;
   }
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+
+    const [year, month, day] = dateString.split("T")[0].split("-");
+
+    return `${day}/${month}/${year}`;
+  };
+  
+
   return (
     <div className="mt-10">
-      <h2 className="text-xl font-semibold mb-4">
-        Blocked Villas
-      </h2>
+      <h2 className="text-xl font-semibold mb-4">Blocked Villas</h2>
 
       {blocks.length === 0 && (
         <p className="text-gray-400">No blocked dates found.</p>
@@ -61,8 +65,7 @@ export default function BlockedVillasList() {
 
       <div className="space-y-4">
         {blocks.map((block) => {
-          const checkInPassed =
-            new Date(block.checkIn) < today;
+          const checkInPassed = new Date(block.checkIn) < today;
 
           return (
             <div
@@ -75,8 +78,7 @@ export default function BlockedVillasList() {
                 </h3>
 
                 <p className="text-sm text-gray-300">
-                  {new Date(block.checkIn).toLocaleDateString()} →
-                  {new Date(block.checkOut).toLocaleDateString()}
+                  {formatDate(block.checkIn)} → {formatDate(block.checkOut)}d
                 </p>
 
                 <p className="text-sm text-gray-400">

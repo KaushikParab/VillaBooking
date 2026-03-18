@@ -94,6 +94,7 @@ function SingleVilla() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [btnLoading, setBtnLoading] = useState(false);
   const [villa, setVilla] = useState(null);
   const location = useLocation();
   const [selectedImage, setSelectedImage] = useState(0);
@@ -245,6 +246,8 @@ function SingleVilla() {
 
   const checkVillaAvailability = async () => {
     try {
+      setBtnLoading(true);
+
       if (bookingData.checkIn >= bookingData.checkOut) {
         toast.error("Check-In date should be before Check-Out date");
         return;
@@ -268,10 +271,14 @@ function SingleVilla() {
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setBtnLoading(false);
     }
   };
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    setBtnLoading(true);
+
     if (totalPersons > maxGuests) {
       toast.error(`Only ${maxGuests} guests allowed`);
       return;
@@ -314,6 +321,8 @@ function SingleVilla() {
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setBtnLoading(false);
     }
   };
 
@@ -375,7 +384,6 @@ function SingleVilla() {
             <div className="lg:col-span-2">
               <img
                 src={villa.images[selectedImage]}
-                
                 className="w-full h-96 object-cover rounded-xl"
                 alt="Villa"
               />
@@ -623,10 +631,25 @@ function SingleVilla() {
                   )}
                 </div>
                 <button
-                  className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200 bg-blue-600 hover:bg-blue-700 text-white`}
                   type="submit"
+                  disabled={btnLoading}
+                  className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-200
+                              ${
+                                btnLoading
+                                  ? "bg-gray-500 cursor-not-allowed"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              } text-white flex items-center justify-center gap-2`}
                 >
-                  {isAvailable ? "Book Now" : "Check Availability"}
+                  {btnLoading ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Processing...
+                    </>
+                  ) : isAvailable ? (
+                    "Book Now"
+                  ) : (
+                    "Check Availability"
+                  )}
                 </button>
               </form>
             </div>

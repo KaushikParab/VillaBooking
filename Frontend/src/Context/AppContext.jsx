@@ -14,6 +14,7 @@ const AppContextProvider = ({ children }) => {
 
   const [user, setUser] = useState(null);
   const [owner, setOwner] = useState(null);
+  const [ownerName, setOwnerName] = useState("");
 
   // -------- FILTERS --------
   const [location, setLocation] = useState("");
@@ -55,7 +56,12 @@ const AppContextProvider = ({ children }) => {
     try {
       const { data } = await axios.get("/api/user/is-auth");
       if (data.success) {
-        data.user.role === "user" ? setUser(true) : setOwner(true);
+        if (data.user.role === "user") {
+          setUser(true);
+        } else {
+          setOwner(true);
+          setOwnerName(data.user.name);
+        }
       }
     } catch (error) {
       console.log(error);
@@ -93,7 +99,7 @@ const AppContextProvider = ({ children }) => {
       await axios.post(`/api/favourites/toggle/${villaId}`);
     } catch (error) {
       toast.error("Failed to update favourite");
-      fetchFavourites(); 
+      fetchFavourites();
     }
   };
 
@@ -283,6 +289,7 @@ const AppContextProvider = ({ children }) => {
     setUser,
     owner,
     setOwner,
+    ownerName,
 
     // Villas
     villaData,

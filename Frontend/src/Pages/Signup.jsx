@@ -26,7 +26,7 @@ export default function Signup() {
       if (data.success) {
         toast.success(data.message);
         navigate("/login");
-      }else{
+      } else {
         toast.error(data.message);
       }
     } catch (error) {
@@ -102,6 +102,8 @@ export default function Signup() {
                 type="email"
                 autoComplete="email"
                 required
+                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
+                title="Please enter a valid email address (example: name@example.com)"
                 className="mt-1 w-full rounded-lg border border-[#333333] bg-[#1E1E1E80] px-3 py-2 text-[#FFFFFF] placeholder-[#888888] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c0b283] focus:border-[#FFD369]"
                 placeholder="name@example.com"
               />

@@ -120,7 +120,11 @@ export default function BlockedDates() {
 
   const formatDate = (date) => {
     if (!date) return "";
-    return new Date(date).toISOString().split("T")[0];
+
+    const d = date.slice(0, 10);
+    const [year, month, day] = d.split("-");
+
+    return `${day}/${month}/${year}`;
   };
 
   return (

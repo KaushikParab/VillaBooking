@@ -1,12 +1,10 @@
-import { useState } from "react";
-import { useEffect } from "react";
-
-import { useContext } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { toast } from "react-hot-toast";
 import { AppContext } from "../../Context/AppContext";
 
 const AddRoom = () => {
   const { axios, navigate } = useContext(AppContext);
+  const [loading, setLoading] = useState(false);
   const [roomData, setRoomData] = useState({
     villa: "",
     roomType: "",
@@ -20,11 +18,70 @@ const AddRoom = () => {
       lunch: false,
       dinner: false,
     },
-    isAvailable: true,
+    isAvailable: false,
   });
   const [imageError, setImageError] = useState("");
 
   const [villaData, setVillaData] = useState([]);
+
+  const suggestionRef = useRef(null);
+  const roomTypeSuggestions = [
+    "Standard Room",
+    "Deluxe Room",
+    "Superior Room",
+    "Executive Room",
+    "Luxury Room",
+    "Premium Room",
+    "Classic Room",
+    "Economy Room",
+    "Budget Room",
+  ];
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] =
+    useState(roomTypeSuggestions);
+  const handleRoomTypeChange = (e) => {
+    const value = e.target.value;
+
+    setRoomData((prev) => ({
+      ...prev,
+      roomType: value,
+    }));
+
+    const filtered = roomTypeSuggestions.filter((type) =>
+      type.toLowerCase().includes(value.toLowerCase()),
+    );
+
+    setFilteredSuggestions(filtered);
+    setShowSuggestions(true);
+  };
+
+  const selectSuggestion = (value) => {
+    setRoomData((prev) => ({
+      ...prev,
+      roomType: value,
+    }));
+
+    setShowSuggestions(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        suggestionRef.current &&
+        !suggestionRef.current.contains(event.target)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const fetchOwnerVillas = async () => {
     try {
       const { data } = await axios.get("/api/villa/get");
@@ -61,6 +118,7 @@ const AddRoom = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
 
     const formData = new FormData();
     formData.append("villa", roomData.villa);
@@ -85,6 +143,8 @@ const AddRoom = () => {
       formData.append("images", roomData.images[i]);
     }
     try {
+      setLoading(true);
+
       const { data } = await axios.post("/api/room/add", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -96,6 +156,8 @@ const AddRoom = () => {
       }
     } catch (error) {
       toast.error(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -162,15 +224,35 @@ const AddRoom = () => {
           <label className="text-base font-medium" htmlFor="product-name">
             Room Type
           </label>
-          <input
-            name="roomType"
-            value={roomData.roomType}
-            onChange={handleChange}
-            type="text"
-            placeholder="Type here"
-            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
-            required
-          />
+          <div ref={suggestionRef} className="relative">
+            <input
+              name="roomType"
+              value={roomData.roomType}
+              onChange={handleRoomTypeChange}
+              onFocus={() => setShowSuggestions(true)}
+              type="text"
+              placeholder="Type or select room type"
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 w-full"
+              required
+            />
+
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div
+                className="absolute z-50 w-full bg-gray-800 border border-gray-600 rounded mt-1 max-h-52 overflow-y-auto shadow-lg"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {filteredSuggestions.map((item, index) => (
+                  <div
+                    key={index}
+                    onClick={() => selectSuggestion(item)}
+                    className="px-3 py-2 cursor-pointer hover:bg-[#6A0DAD]/40 transition"
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-1 w-32">
             <label className="text-base font-medium">Guests</label>
@@ -299,7 +381,7 @@ const AddRoom = () => {
                 type="checkbox"
                 name="isAvailable"
                 onChange={handleChange}
-                value={roomData.isAvailable}
+                checked={roomData.isAvailable}
                 placeholder="0"
                 className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 ml-2"
                 required
@@ -307,8 +389,24 @@ const AddRoom = () => {
             </label>
           </div>
         </div>
-        <button className="px-8 py-2.5 bg-[#6A0DAD] text-white font-medium rounded">
-          Add Room
+        <button
+          type="submit"
+          disabled={loading}
+          className={`px-8 py-2.5 text-white font-medium rounded transition-all duration-200
+  ${
+    loading
+      ? "bg-[#6A0DAD]/60 cursor-not-allowed"
+      : "bg-[#6A0DAD] hover:bg-[#5a0aa0]"
+  }`}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2 justify-center">
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+              Adding Room...
+            </span>
+          ) : (
+            "Add Room"
+          )}
         </button>
       </form>
     </div>

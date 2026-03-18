@@ -39,8 +39,8 @@ function RoomCard({ room }) {
         {/* Price + Button */}
         <div className="flex items-center gap-4 justify-between px-4 pb-4">
           <p className="text-sm text-gray-400">
-            ${room.pricePerNight}
-            <span className="text-gray-500"> /per night</span>
+            ₹ {room.pricePerNight}
+            <span className="text-gray-500"> /per person</span>
           </p>
 
           <button

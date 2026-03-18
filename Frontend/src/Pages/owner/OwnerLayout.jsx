@@ -4,6 +4,8 @@ import {
   Bed,
   TrendingUp,
   CalendarX,
+  User,
+  UserCircle,
 } from "lucide-react";
 import { useContext } from "react";
 import { AppContext } from "../../Context/AppContext";
@@ -13,14 +15,18 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 function OwnerLayout() {
   const location = useLocation();
 
-  const { owner, setOwner, axios } = useContext(AppContext);
+  const { owner, setOwner, axios, ownerName } = useContext(AppContext);
 
   const sidebarLinks = [
     { name: "Villas", path: "/owner", icon: <Warehouse /> },
     { name: "Rooms", path: "/owner/rooms", icon: <Bed /> },
     { name: "Bookings", path: "/owner/bookings", icon: <CalendarArrowDown /> },
     { name: "Earnings", path: "/owner/earnings", icon: <TrendingUp /> },
-    { name: "Blocked Dates", path: "/owner/blocked-dates", icon: <CalendarX /> },
+    {
+      name: "Blocked Dates",
+      path: "/owner/blocked-dates",
+      icon: <CalendarX />,
+    },
   ];
 
   const navigate = useNavigate();
@@ -41,20 +47,40 @@ function OwnerLayout() {
   return (
     <>
       <div className="flex items-center justify-between px-4 md:px-8 border-b border-gray-300 py-3 bg-black transition-all duration-300">
-        <Link to="/owner">
-          <span
-            className="h-9 font-extrabold text-2xl md:text-3xl tracking-wide 
-               bg-gradient-to-r from-yellow-400 to-yellow-600 
-               bg-clip-text text-transparent drop-shadow-md"
-          >
-            Stavilo
+        <Link to="/owner" className="flex items-center gap-3 select-none">
+          <span className="flex font-extrabold text-2xl md:text-3xl tracking-wide">
+            {"Stavilo".split("").map((char, index) => (
+              <span
+                key={index}
+                className={`
+          inline-block cursor-pointer
+          transition-all duration-300
+          ease-[cubic-bezier(0.22,1,0.36,1)]
+          hover:scale-125
+          hover:-translate-y-1
+          hover:font-black
+          hover:drop-shadow-[0_0_10px_rgba(250,204,21,0.55)]
+          
+          ${
+            index === 0
+              ? "text-yellow-500 hover:text-amber-400 dark:hover:text-yellow-300"
+              : "text-zinc-800 dark:text-zinc-200 hover:text-yellow-500 dark:hover:text-yellow-400"
+          }
+        `}
+              >
+                {char}
+              </span>
+            ))}
           </span>
         </Link>
-        <div className="flex items-center gap-5 text-white/80">
-          <p>Hi! Owner</p>
+        <div className="flex items-center gap-10 text-white/80">
+          <div className="flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/10 text-white/90">
+            <UserCircle size={22} className="text-yellow-400" />
+            <p className="text-sm font-medium">{ownerName || "Owner"}</p>
+          </div>
           <button
             onClick={logout}
-            className="border rounded-full text-sm px-4 py-1"
+            className="border rounded-full text-sm px-4 py-1 hover:bg-red-500 hover:border-red-700"
           >
             Logout
           </button>
