@@ -26,6 +26,7 @@ import {
   Calendar,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import PriceBreakdown from "../Components/PriceBreakdown";
 
 const SingleRoomLoader = () => {
   return (
@@ -230,6 +231,20 @@ function SingleRoom() {
           setPricePreview(null);
           toast.error("Room is not available ❌");
         }
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleBooking = async ({ type, id, bookingData, totalPersons }) => {
+    try {
+      if (data.success) {
+        toast.success(data.message);
+        navigate("/my-bookings");
+        scrollTo(0, 0);
+      } else {
+        toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message);
@@ -483,38 +498,10 @@ function SingleRoom() {
                 <div className="border-t pt-4 mt-6">
                   <div className="border-t pt-4 mt-6">
                     {pricePreview ? (
-                      <>
-                        <div className="flex justify-between mb-2">
-                          <span>Base Price</span>
-                          <span>₹ {pricePreview.basePrice}</span>
-                        </div>
-
-                        {pricePreview.discountPercent > 0 && (
-                          <div className="flex justify-between mb-2">
-                            <span>Discount</span>
-                            <span className="text-blue-400 font-medium">
-                              {pricePreview.discountPercent}% Off
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between mb-2">
-                          <span>Nights</span>
-                          <span>{pricePreview.nights}</span>
-                        </div>
-
-                        <div className="flex justify-between mb-2">
-                          <span>Guests</span>
-                          <span>{pricePreview.persons}</span>
-                        </div>
-
-                        <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">
-                          <span>Total Price</span>
-                          <span className="text-green-400">
-                            ₹ {pricePreview.totalPrice}
-                          </span>
-                        </div>
-                      </>
+                      <PriceBreakdown
+                        pricePreview={pricePreview}
+                        bookingData={bookingData}
+                      />
                     ) : (
                       <div className="flex justify-between items-center mb-4">
                         <span>Price per Night</span>

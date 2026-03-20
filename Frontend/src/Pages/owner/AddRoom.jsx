@@ -183,7 +183,7 @@ const AddRoom = () => {
 
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
-      <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
+      <form onSubmit={handleSubmit} autoComplete="off" className="md:p-10 p-4 space-y-5 max-w-lg">
         <div>
           <p className="text-base font-medium">Room Image</p>
 
@@ -295,7 +295,7 @@ const AddRoom = () => {
         <div className="flex items-center gap-5 flex-wrap">
           <div className="flex-1 flex flex-col gap-1 w-32">
             <label className="text-base font-medium" htmlFor="product-price">
-              pricePerNight
+              Price per person per night
             </label>
             <input
               min={0}

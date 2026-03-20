@@ -6,14 +6,7 @@ export const createAvailabilityBlock = async (req, res) => {
   try {
     const ownerId = req.user.id;
 
-    const {
-      villa,
-      rooms,
-      checkIn,
-      checkOut,
-      reason,
-      source,
-    } = req.body;
+    const { villa, rooms, checkIn, checkOut, reason, source } = req.body;
 
     /* ================= OWNER VALIDATION ================= */
     const villaData = await Villa.findById(villa);
@@ -36,32 +29,46 @@ export const createAvailabilityBlock = async (req, res) => {
     };
 
     /* ================= CHECK EXISTING BLOCK ================= */
-    const existingBlock = await AvailabilityBlock.findOne(overlapFilter);
+    let blockFilter = { ...overlapFilter };
+
+    if (rooms && rooms.length > 0) {
+      blockFilter.rooms = { $in: rooms };
+    }
+
+    const existingBlock = await AvailabilityBlock.findOne(blockFilter);
 
     if (existingBlock) {
       return res.status(400).json({
         success: false,
-        message: "Villa already blocked for selected dates",
+        message: "Selected dates already blocked",
       });
     }
 
     /* ================= CHECK EXISTING BOOKING ================= */
-    const existingBooking = await Booking.findOne({
+    let bookingFilter = {
       ...overlapFilter,
       status: { $ne: "cancelled" },
-    });
+    };
+
+    if (rooms && rooms.length > 0) {
+      bookingFilter.$or = [{ room: { $in: rooms } }, { bookingType: "villa" }];
+    } else {
+      bookingFilter.$or = [{ bookingType: "villa" }, { bookingType: "room" }];
+    }
+
+    const existingBooking = await Booking.findOne(bookingFilter);
 
     if (existingBooking) {
       return res.status(400).json({
         success: false,
-        message: "Villa already booked for selected dates",
+        message: "Booking already exists for selected dates",
       });
     }
 
     const block = await AvailabilityBlock.create({
       owner: ownerId,
       villa,
-      rooms,
+      rooms: rooms && rooms.length > 0 ? rooms : [],
       checkIn: checkInDate,
       checkOut: checkOutDate,
       reason,
@@ -73,7 +80,6 @@ export const createAvailabilityBlock = async (req, res) => {
       message: "Dates blocked successfully",
       block,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({
@@ -82,7 +88,6 @@ export const createAvailabilityBlock = async (req, res) => {
     });
   }
 };
-
 
 export const getOwnerBlocks = async (req, res) => {
   const blocks = await AvailabilityBlock.find({
@@ -94,7 +99,6 @@ export const getOwnerBlocks = async (req, res) => {
 
   res.json({ success: true, blocks });
 };
-
 
 export const deleteBlock = async (req, res) => {
   await AvailabilityBlock.findByIdAndDelete(req.params.id);

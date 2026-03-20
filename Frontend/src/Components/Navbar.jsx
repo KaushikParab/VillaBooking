@@ -104,7 +104,7 @@ const Navbar = () => {
               <img
                 src={profileIcon}
                 alt="Profile"
-                className="w-12 h-12 rounded-full cursor-pointer"
+                className="w-12 h-12 rounded-full cursor-pointer border-2 border-white"
               />
               {/* Dropdown Menu */}
               <div className="absolute right-0 mt-0 pt-2 w-40 bg-white shadow-lg rounded-md opacity-0 group-hover:opacity-100 group-hover:visible invisible transition duration-300 z-50">

@@ -61,7 +61,8 @@ export default function VillaCard({ villa }) {
 
         {/* Price */}
         <div className="absolute bottom-3 right-3 bg-[#6A0DAD] px-4 py-2 rounded-full text-white font-bold text-sm">
-          ₹ {villa.price} / night
+          ₹ {villa.price}{" "}
+          {villa.pricingModel === "per_person" ? "/ person / night" : "/ night"}
         </div>
       </div>
 
@@ -96,7 +97,9 @@ export default function VillaCard({ villa }) {
         <div className="flex justify-between items-center pt-3 border-t border-white/10">
           <div className="flex items-center gap-1 text-white/70 text-sm">
             <Users size={16} />
-            <span>{villa.guests || 6} Guests</span>
+            <span>
+              {(villa.baseGuests || 0) + (villa.extraGuestsAllowed || 0)} Guests
+            </span>
           </div>
 
           <button

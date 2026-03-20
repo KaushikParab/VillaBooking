@@ -25,6 +25,7 @@ import {
 import { MdLocationPin } from "react-icons/md";
 import toast from "react-hot-toast";
 import TextReviews from "../Components/TextReviews";
+import PriceBreakdown from "../Components/PriceBreakdown";
 
 const SingleVillaLoader = () => {
   return (
@@ -94,6 +95,7 @@ function SingleVilla() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+  const [pricePreview, setPricePreview] = useState(null);
   const [btnLoading, setBtnLoading] = useState(false);
   const [villa, setVilla] = useState(null);
   const location = useLocation();
@@ -107,8 +109,7 @@ function SingleVilla() {
   });
   const totalPersons =
     bookingData.adults + bookingData.children + bookingData.infants;
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [pricePreview, setPricePreview] = useState(null);
+  const isAvailable = !!pricePreview;
 
   const onChangeHandler = (e) => {
     setBookingData({ ...bookingData, [e.target.name]: e.target.value });
@@ -139,13 +140,11 @@ function SingleVilla() {
   useEffect(() => {
     if (location.state?.bookingData) {
       setBookingData(location.state.bookingData);
-      setIsAvailable(location.state.isAvailable || false);
     }
   }, [location.state]);
 
   useEffect(() => {
-    if (!villa) return;
-
+    if (!villa || !bookingData.checkIn || !bookingData.checkOut) return;
     fetchPricePreview();
   }, [villa, bookingData.checkIn, bookingData.checkOut, totalPersons]);
 
@@ -169,7 +168,7 @@ function SingleVilla() {
 
       if (data.success) {
         if (!data.isAvailable) {
-          toast.error("Villa not available for selected dates");
+          toast.error("Villa not available for selected dates ❌");
           setPricePreview(null);
           return;
         }
@@ -217,7 +216,7 @@ function SingleVilla() {
   if (!villa) {
     return <SingleVillaLoader />;
   }
-  const maxGuests = villa?.guests || 1;
+  const maxGuests = (villa?.baseGuests || 0) + (villa?.extraGuestsAllowed || 0);
 
   const getAmenityIcon = (amenity) => {
     const map = {
@@ -262,10 +261,8 @@ function SingleVilla() {
       );
       if (data.success) {
         if (data.isAvailable) {
-          setIsAvailable(true);
           toast.success("Villa is available ✅");
         } else {
-          setIsAvailable(false);
           toast.error("Villa is not available ❌");
         }
       }
@@ -275,49 +272,77 @@ function SingleVilla() {
       setBtnLoading(false);
     }
   };
+
+  const handleBooking = async ({ type, id, bookingData, totalPersons }) => {
+    try {
+      const { data } = await axios.post("/api/bookings/book", {
+        [type]: id,
+        checkInDate: bookingData.checkIn,
+        checkOutDate: bookingData.checkOut,
+        persons: totalPersons,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        infants: bookingData.infants,
+        paymentMethod: "Pay At Villa",
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        navigate("/my-bookings");
+        scrollTo(0, 0);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     setBtnLoading(true);
 
-    if (totalPersons > maxGuests) {
-      toast.error(`Only ${maxGuests} guests allowed`);
-      return;
-    }
-
-    // Authentication of User logged in check
-    if (!user) {
-      toast.error("Please login to book a room");
-      navigate("/login", {
-        state: {
-          redirectTo: location.pathname,
-          bookingData,
-          isAvailable,
-        },
-      });
-      return;
-    }
-
     try {
-      if (!isAvailable) {
-        return checkVillaAvailability();
-      } else {
-        const { data } = await axios.post("/api/bookings/book", {
-          villa: villa._id,
-          checkInDate: bookingData.checkIn,
-          checkOutDate: bookingData.checkOut,
-          persons: totalPersons,
-          adults: bookingData.adults,
-          children: bookingData.children,
-          infants: bookingData.infants,
-          paymentMethod: "Pay At Villa",
+      if (totalPersons > maxGuests) {
+        toast.error(
+          `Max ${maxGuests} guests allowed (Base: ${villa.baseGuests}, Extra: ${villa.extraGuestsAllowed})`,
+        );
+        return;
+      }
+
+      if (!user) {
+        toast.error("Please login to book");
+        navigate("/login", {
+          state: {
+            redirectTo: location.pathname,
+            bookingData,
+          },
         });
-        if (data.success) {
-          toast.success(data.message);
-          navigate("/my-bookings");
-          scrollTo(0, 0);
-        } else {
-          toast.error(data.message);
-        }
+        return;
+      }
+
+      if (!pricePreview) {
+        toast.error("Please select valid dates");
+        return;
+      }
+
+      const { data } = await axios.post("/api/bookings/book", {
+        villa: villa._id,
+        checkInDate: bookingData.checkIn,
+        checkOutDate: bookingData.checkOut,
+        persons: totalPersons,
+        adults: bookingData.adults,
+        children: bookingData.children,
+        infants: bookingData.infants,
+        paymentMethod: "Pay At Villa",
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        navigate("/my-bookings");
+        scrollTo(0, 0);
+      } else {
+        toast.error(data.message);
       }
     } catch (error) {
       toast.error(error.message);
@@ -579,50 +604,29 @@ function SingleVilla() {
                 <div>
                   {/* Guests Selector */}
                   <GuestSelector
-                    bookingData={bookingData}
+                    bookingData={{
+                      ...bookingData,
+                      baseGuests: villa.baseGuests,
+                    }}
                     setBookingData={setBookingData}
                     maxGuests={maxGuests}
                   />
                 </div>
 
+                {/* Extra Guests Info */}
+                {totalPersons > villa.baseGuests && (
+                  <div className="bg-yellow-500/10 border border-yellow-500 text-yellow-400 p-3 rounded-lg text-sm">
+                    Extra Guests: {totalPersons - villa.baseGuests} <br />
+                    Charges may apply per guest.
+                  </div>
+                )}
+
                 <div className="border-t pt-4 mt-6">
                   {pricePreview ? (
-                    <>
-                      <div className="flex justify-between mb-2">
-                        <span>Base Price</span>
-                        <span>₹ {pricePreview.basePrice}</span>
-                      </div>
-
-                      {/* ADD THIS NEW DISCOUNT ROW */}
-                      {pricePreview.discountPercent > 0 && (
-                        <div className="flex justify-between mb-2">
-                          <span>Discount</span>
-                          <span className="text-blue-400 font-medium">
-                            {pricePreview.discountPercent}% Off
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between mb-2">
-                        <span>Nights</span>
-                        <span>{pricePreview.nights}</span>
-                      </div>
-
-                      <div className="flex justify-between mb-2">
-                        <span>Guests</span>
-                        <span>
-                          {bookingData.adults} Adults • {bookingData.children}{" "}
-                          Children • {bookingData.infants} Infants
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between text-lg font-bold border-t pt-3 mt-3">
-                        <span>Total Price</span>
-                        <span className="text-green-400">
-                          ₹ {pricePreview.totalPrice}
-                        </span>
-                      </div>
-                    </>
+                    <PriceBreakdown
+                      pricePreview={pricePreview}
+                      bookingData={bookingData}
+                    />
                   ) : (
                     <div className="flex justify-between items-center">
                       <span>Price per Night</span>
@@ -645,10 +649,10 @@ function SingleVilla() {
                       <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                       Processing...
                     </>
-                  ) : isAvailable ? (
+                  ) : pricePreview ? (
                     "Book Now"
                   ) : (
-                    "Check Availability"
+                    "Select Dates"
                   )}
                 </button>
               </form>

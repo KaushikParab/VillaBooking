@@ -12,8 +12,12 @@ const RegisterVilla = () => {
     villaContactNo: "",
     villaAddress: "",
     rating: "",
-    guests: "",
+    pricingModel: "per_person",
+    baseGuests: "",
+    extraGuestsAllowed: "",
+    extraGuestCharge: "",
     price: "",
+    weekDayDiscount: "",
     amenities: "",
     images: [],
     meals: {
@@ -27,6 +31,17 @@ const RegisterVilla = () => {
     setData({ ...data, [e.target.name]: e.target.value });
 
     const { name, value } = e.target;
+
+    if (name === "pricingModel") {
+      setData((prev) => ({
+        ...prev,
+        pricingModel: value,
+        extraGuestsAllowed:
+          value === "per_person" ? 0 : prev.extraGuestsAllowed,
+        extraGuestCharge: value === "per_person" ? 0 : prev.extraGuestCharge,
+      }));
+      return;
+    }
 
     if (name === "villaContactNo") {
       const onlyNumbers = value.replace(/[^0-9]/g, "");
@@ -56,13 +71,26 @@ const RegisterVilla = () => {
     e.preventDefault();
     if (loading) return;
 
+    if (
+      data.pricingModel === "entire_villa" &&
+      Number(data.extraGuestsAllowed) > 0 &&
+      (!data.extraGuestCharge || Number(data.extraGuestCharge) <= 0)
+    ) {
+      toast.error("Please enter extra guest charge");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("villaName", data.villaName);
     formData.append("villaContactNo", data.villaContactNo);
     formData.append("villaAddress", data.villaAddress);
     formData.append("rating", data.rating);
-    formData.append("guests", data.guests);
+    formData.append("pricingModel", data.pricingModel);
+    formData.append("baseGuests", data.baseGuests);
+    formData.append("extraGuestsAllowed", data.extraGuestsAllowed);
+    formData.append("extraGuestCharge", data.extraGuestCharge);
     formData.append("price", data.price);
+    formData.append("weekDayDiscount", data.weekDayDiscount);
     formData.append("amenities", data.amenities);
     formData.append("meals", JSON.stringify(data.meals));
 
@@ -98,7 +126,7 @@ const RegisterVilla = () => {
     }
   };
 
-  const handleNumberChange = (e, min, max, integer = false) => {
+  const handleNumberChange = (e, min, max) => {
     const { name, value } = e.target;
 
     if (value === "") {
@@ -106,15 +134,22 @@ const RegisterVilla = () => {
       return;
     }
 
-    const num = integer ? parseInt(value, 10) : Number(value);
+    if (!/^\d+$/.test(value)) return;
 
-    if (
-      !isNaN(num) &&
-      num >= min &&
-      (max === null || num <= max) &&
-      (!integer || Number.isInteger(num))
-    ) {
-      setData((prev) => ({ ...prev, [name]: num }));
+    const num = Number(value);
+
+    if (num < min) return;
+    if (max !== null && num > max) return;
+
+    setData((prev) => ({
+      ...prev,
+      [name]: num,
+    }));
+  };
+
+  const blockInvalidNumberKeys = (e) => {
+    if (["e", "E", "+", "-", "."].includes(e.key)) {
+      e.preventDefault();
     }
   };
 
@@ -222,47 +257,120 @@ const RegisterVilla = () => {
               required
             />
           </div>
+        </div>
 
-          {/* Get Villa Guests */}
-          <div className="flex md:flex-col max-md:gap-2 max-md:items-center">
-            <label htmlFor="guests">Guests</label>
+        {/* PRICING MODEL */}
+        <div className="flex flex-col gap-2">
+          <label className="font-medium">Pricing Model</label>
+
+          <label className="text-white/80">
             <input
-              id="guests"
-              name="guests"
+              type="radio"
+              name="pricingModel"
+              value="per_person"
+              onChange={handleChange}
+              checked={data.pricingModel === "per_person"}
+            />
+            Price per person per night
+          </label>
+
+          <label className="text-white/80">
+            <input
+              type="radio"
+              name="pricingModel"
+              value="entire_villa"
+              onChange={handleChange}
+            />
+            Fixed price for entire villa
+          </label>
+        </div>
+
+        {/* Get Villa Guests & Pricing*/}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label>Guests Included</label>
+            <input
               type="number"
+              name="baseGuests"
               min={1}
-              max={30}
+              max={50}
               step={1}
-              value={data.guests}
-              onChange={(e) => handleNumberChange(e, 1, 30, true)}
+              value={data.baseGuests}
+              onChange={(e) => handleNumberChange(e, 1, 50)}
+              onKeyDown={blockInvalidNumberKeys}
+              className="outline-none md:py-2.5 py-2 px-3 w-32 rounded border border-gray-500/40"
+              required
+            />
+          </div>
+
+          <div className="flex flex-col gap-1 w-32">
+            <label className="text-base font-medium">Price (₹)</label>
+            <input
+              type="number"
+              name="price"
+              min={1}
+              step={1}
+              value={data.price}
+              onChange={(e) => handleNumberChange(e, 1, null, true)}
               onKeyDown={(e) => {
                 if (["e", "E", "+", "-", "."].includes(e.key)) {
                   e.preventDefault();
                 }
               }}
-              className="bg-[#1E1E1E/80] rounded border border-gray-500/40 px-3 py-1.5 mt-1.5 text-sm outline-none max-w-16"
+              className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
               required
             />
           </div>
+
+          {data.pricingModel !== "per_person" && (
+            <>
+              <div>
+                <label>Extra Guests Allowed</label>
+                <input
+                  type="number"
+                  name="extraGuestsAllowed"
+                  min={0}
+                  max={10}
+                  step={1}
+                  value={
+                    data.extraGuestsAllowed === "" ? 0 : data.extraGuestsAllowed
+                  }
+                  onChange={(e) => handleNumberChange(e, 0, 10)}
+                  onKeyDown={blockInvalidNumberKeys}
+                  className="outline-none md:py-2.5 py-2 px-3 w-32 rounded border border-gray-500/40"
+                />
+              </div>
+
+              <div>
+                <label>Extra Guest Charge (₹)</label>
+                <input
+                  type="number"
+                  name="extraGuestCharge"
+                  min={0}
+                  step={1}
+                  value={data.extraGuestCharge}
+                  onChange={(e) => handleNumberChange(e, 0, null)}
+                  onKeyDown={blockInvalidNumberKeys}
+                  className="outline-none md:py-2.5 py-2 px-3 w-32 rounded border border-gray-500/40"
+                />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Get Villa Price Per Night Per Person */}
-        <div className="flex flex-col gap-1 w-32">
-          <label className="text-base font-medium">Price</label>
+        {/* Week Days Discount */}
+        <div className="flex flex-col gap-1 ">
+          <label>Week Days Discount in % (Mon-Fri)</label>
           <input
             type="number"
-            name="price"
-            min={1}
+            name="weekDayDiscount"
+            min={0}
+            max={100}
             step={1}
-            value={data.price}
-            onChange={(e) => handleNumberChange(e, 1, null, true)}
-            onKeyDown={(e) => {
-              if (["e", "E", "+", "-", "."].includes(e.key)) {
-                e.preventDefault();
-              }
-            }}
-            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
-            required
+            value={data.weekDayDiscount === "" ? 0 : data.weekDayDiscount}
+            onChange={(e) => handleNumberChange(e, 0, 100)}
+            onKeyDown={blockInvalidNumberKeys}
+            className="outline-none md:py-2.5 py-2 px-3 w-32 rounded border border-gray-500/40"
           />
         </div>
 
@@ -274,6 +382,8 @@ const RegisterVilla = () => {
             value={data.amenities}
             onChange={handleChange}
             rows={4}
+            placeholder="Separate each amenities by  ',' 
+eg. WiFi, Pool"
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
             required
           />

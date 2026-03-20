@@ -6,16 +6,19 @@ const villaSchema = new mongoose.Schema(
     villaContactNo: { type: String, required: true },
     villaAddress: { type: String, required: true },
     rating: { type: String, required: true },
-    guests: { type: Number, required: true },
+    pricingModel: {
+      type: String,
+      enum: ["per_person", "entire_villa"],
+      required: true,
+    },
+    baseGuests: { type: Number, required: true, min: 1 },
+    extraGuestsAllowed: { type: Number, default: 0, min: 0 },
+    extraGuestCharge: { type: Number, default: 0 },
     price: { type: Number, required: true },
+    weekDayDiscount: { type: Number,  default: 0, min: 0, max: 100},
     amenities: { type: String, required: true },
     images: { type: [String], required: true },
-
-    totalRooms: {
-      type: Number,
-      default: 0,
-    },
-
+    totalRooms: { type: Number, default: 0 },
     meals: {
       breakfast: { type: Boolean, default: false },
       lunch: { type: Boolean, default: false },

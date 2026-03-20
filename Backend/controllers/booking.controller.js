@@ -50,6 +50,7 @@ const sendBookingEmail = async (booking, subject, title) => {
 
 export const checkAvailability = async ({
   villa,
+  room,
   checkInDate,
   checkOutDate,
 }) => {
@@ -60,17 +61,57 @@ export const checkAvailability = async ({
   };
 
   // WEBSITE BOOKINGS
-  const bookingExists = await Booking.findOne({
+  const villaBooked = await Booking.findOne({
     ...dateFilter,
     status: { $ne: "cancelled" },
+    bookingType: "villa",
   });
 
-  if (bookingExists) return false;
+  if (villaBooked) return false;
+  if (room) {
+    const roomBooked = await Booking.findOne({
+      ...dateFilter,
+      room,
+      status: { $ne: "cancelled" },
+    });
+
+    if (roomBooked) return false;
+  }
+  if (!room) {
+    const roomBookings = await Booking.countDocuments({
+      ...dateFilter,
+      bookingType: "room",
+      status: { $ne: "cancelled" },
+    });
+
+    if (roomBookings > 0) return false;
+  }
 
   // MANUAL BLOCKS
-  const blockExists = await AvailabilityBlock.findOne(dateFilter);
+  const villaBlocked = await AvailabilityBlock.findOne({
+    ...dateFilter,
+    rooms: { $size: 0 },
+  });
 
-  if (blockExists) return false;
+  if (villaBlocked) return false;
+
+  if (room) {
+    const roomBlocked = await AvailabilityBlock.findOne({
+      ...dateFilter,
+      rooms: { $in: [room] },
+    });
+
+    if (roomBlocked) return false;
+  }
+
+  if (!room) {
+    const anyRoomBlocked = await AvailabilityBlock.findOne({
+      ...dateFilter,
+      rooms: { $exists: true, $ne: [] },
+    });
+
+    if (anyRoomBlocked) return false;
+  }
 
   return true;
 };
@@ -91,6 +132,7 @@ export const checkRoomAvailability = async (req, res) => {
 
     const isAvailable = await checkAvailability({
       villa: roomData.villa._id,
+      room: roomData._id,
       checkInDate,
       checkOutDate,
     });
@@ -122,13 +164,18 @@ export const checkVillaAvailability = async (req, res) => {
 
 // -----------DYNAMIC DAY-WISE PRICE CALCULATOR-------------
 const calculateDynamicPrice = ({
+  pricingModel,
   basePrice,
+  baseGuests = 0,
+  extraGuestsAllowed = 0,
+  extraGuestCharge = 0,
+  totalPersons = 0,
   adults = 0,
   children = 0,
   infants = 0,
   checkIn,
   checkOut,
-  discountPercent = 15,
+  discountPercent = 0,
 }) => {
   const startDate = new Date(checkIn);
   const endDate = new Date(checkOut);
@@ -137,25 +184,39 @@ const calculateDynamicPrice = ({
   let totalNights = 0;
   let weekdayNights = 0;
 
-  const adultsCost = adults * basePrice;
-  const childrenCost = children * (basePrice * 0.5);
-  const infantsCost = 0;
-
-  const pricePerNight = adultsCost + childrenCost + infantsCost;
-
   for (let d = new Date(startDate); d < endDate; d.setDate(d.getDate() + 1)) {
     totalNights++;
 
     const day = d.getDay();
     const isWeekend = day === 0 || day === 6;
 
-    let nightlyPrice = pricePerNight;
+    let nightlyPrice = 0;
 
-    if (!isWeekend) {
+    /* =========================
+       PER PERSON MODEL
+    ========================= */
+    if (pricingModel === "per_person") {
+      const adultsCost = adults * basePrice;
+      const childrenCost = children * (basePrice * 0.5);
+      const infantsCost = 0;
+
+      nightlyPrice = adultsCost + childrenCost + infantsCost;
+    } else if (pricingModel === "entire_villa") {
+      /* =========================
+       ENTIRE VILLA MODEL
+    ========================= */
+      let extraGuests = Math.max(totalPersons - baseGuests, 0);
+      const extraCost = extraGuests * extraGuestCharge;
+      nightlyPrice = basePrice + extraCost;
+    }
+
+    /* =========================
+       WEEKDAY DISCOUNT (MON-FRI)
+    ========================= */
+    if (!isWeekend && discountPercent > 0) {
       nightlyPrice = nightlyPrice - (nightlyPrice * discountPercent) / 100;
       weekdayNights++;
     }
-
     totalPrice += nightlyPrice;
   }
 
@@ -235,22 +296,28 @@ export const bookRoom = async (req, res) => {
         });
       }
 
-      if (totalPersons > villaData.guests) {
+      const maxGuests = villaData.baseGuests + villaData.extraGuestsAllowed;
+
+      if (totalPersons > maxGuests) {
         return res.status(400).json({
           success: false,
-          message: `Maximum ${villaData.guests} guests allowed`,
+          message: `Maximum ${maxGuests} guests allowed`,
         });
       }
-      const pricePerPersonPerNight = Number(villaData.price);
 
       const priceResult = calculateDynamicPrice({
-        basePrice: pricePerPersonPerNight,
+        pricingModel: villaData.pricingModel,
+        basePrice: Number(villaData.price),
+        baseGuests: villaData.baseGuests,
+        extraGuestsAllowed: villaData.extraGuestsAllowed,
+        extraGuestCharge: villaData.extraGuestCharge,
+        totalPersons,
         adults,
         children,
         infants,
         checkIn,
         checkOut,
-        discountPercent: 15,
+        discountPercent: villaData.weekDayDiscount || 0,
       });
 
       const totalPrice = priceResult.totalPrice;
@@ -324,15 +391,18 @@ export const bookRoom = async (req, res) => {
         .json({ success: false, message: "Room not found" });
     }
 
-    if (totalPersons > roomData.villa.guests) {
+    const maxGuests = roomData.guests;
+
+    if (totalPersons > maxGuests) {
       return res.status(400).json({
         success: false,
-        message: `Maximum ${roomData.villa.guests} guests allowed`,
+        message: `Maximum ${maxGuests} guests allowed`,
       });
     }
 
     const isAvailable = await checkAvailability({
       villa: roomData.villa._id,
+      room: roomData._id,
       checkInDate,
       checkOutDate,
     });
@@ -340,21 +410,33 @@ export const bookRoom = async (req, res) => {
     if (!isAvailable) {
       return res.status(400).json({
         success: false,
-        message: "Villa is already booked for these dates",
+        message: "Room is already booked for these dates",
       });
     }
 
-    const priceResult = calculateDynamicPrice({
-      basePrice: roomData.pricePerNight,
-      adults,
-      children,
-      infants,
-      checkIn,
-      checkOut,
-      discountPercent: 15,
-    });
+    const adultsCost = adults * roomData.pricePerNight;
+    const childrenCost = children * (roomData.pricePerNight * 0.5);
+    const infantsCost = 0;
 
-    const totalPrice = priceResult.totalPrice;
+    let totalPrice = 0;
+
+    for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      const isWeekend = day === 0 || day === 6;
+
+      const adultsCost = adults * roomData.pricePerNight;
+      const childrenCost = children * (roomData.pricePerNight * 0.5);
+      const infantsCost = 0;
+
+      let nightlyPrice = adultsCost + childrenCost + infantsCost;
+
+      if (!isWeekend && roomData.villa.weekDayDiscount > 0) {
+        nightlyPrice =
+          nightlyPrice - (nightlyPrice * roomData.villa.weekDayDiscount) / 100;
+      }
+
+      totalPrice += nightlyPrice;
+    }
 
     const booking = await Booking.create({
       user: id,
@@ -655,12 +737,13 @@ export const previewBookingPrice = async (req, res) => {
       });
     }
 
+    let villaData;
     let basePrice = 0;
     let villaId;
 
     // ===== VILLA BOOKING =====
     if (villa) {
-      const villaData = await Villa.findById(villa);
+      villaData = await Villa.findById(villa);
       if (!villaData)
         return res
           .status(404)
@@ -680,11 +763,13 @@ export const previewBookingPrice = async (req, res) => {
 
       basePrice = roomData.pricePerNight;
       villaId = roomData.villa._id;
+      villaData = roomData.villa;
     }
 
     // ===== CHECK AVAILABILITY =====
     const isAvailable = await checkAvailability({
       villa: villaId,
+      room: room || null,
       checkInDate,
       checkOutDate,
     });
@@ -698,27 +783,111 @@ export const previewBookingPrice = async (req, res) => {
 
     const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
 
-    const discountPercent = 15;
+    let totalPrice = 0;
 
-    const priceResult = calculateDynamicPrice({
-      basePrice,
-      adults,
-      children,
-      infants,
-      checkIn,
-      checkOut,
-      discountPercent,
-    });
+    if (room) {
+      let totalPriceCalc = 0;
+      let discountAmount = 0;
 
+      for (
+        let d = new Date(checkIn);
+        d < checkOut;
+        d.setDate(d.getDate() + 1)
+      ) {
+        const day = d.getDay();
+        const isWeekend = day === 0 || day === 6;
+
+        const adultsCost = adults * basePrice;
+        const childrenCost = children * (basePrice * 0.5);
+
+        let nightlyPrice = adultsCost + childrenCost;
+
+        if (!isWeekend && villaData.weekDayDiscount > 0) {
+          const discount = (nightlyPrice * villaData.weekDayDiscount) / 100;
+          nightlyPrice -= discount;
+          discountAmount += discount;
+        }
+
+        totalPriceCalc += nightlyPrice;
+      }
+
+      totalPrice = Math.round(totalPriceCalc);
+    } else {
+      const priceResult = calculateDynamicPrice({
+        pricingModel: villaData.pricingModel,
+        basePrice: Number(villaData.price),
+        baseGuests: villaData.baseGuests,
+        extraGuestsAllowed: villaData.extraGuestsAllowed,
+        extraGuestCharge: villaData.extraGuestCharge,
+        totalPersons,
+        adults,
+        children,
+        infants,
+        checkIn,
+        checkOut,
+        discountPercent: villaData.weekDayDiscount || 0,
+      });
+
+      totalPrice = priceResult.totalPrice;
+    }
+
+    let originalPrice = 0;
+
+    if (villaData.pricingModel === "per_person") {
+      originalPrice = basePrice * villaData.baseGuests * nights;
+    } else {
+      const extraGuests = Math.max(totalPersons - villaData.baseGuests, 0);
+      const extraCostPerNight = extraGuests * villaData.extraGuestCharge;
+
+      originalPrice = (basePrice + extraCostPerNight) * nights;
+    }
+
+    const discountPercent = villaData.weekDayDiscount || 0;
+
+    let discountAmount = 0;
+
+    for (let d = new Date(checkIn); d < checkOut; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      const isWeekend = day === 0 || day === 6;
+
+      let nightlyPrice = 0;
+
+      if (villaData.pricingModel === "per_person") {
+        const adultsCost = adults * basePrice;
+        const childrenCost = children * (basePrice * 0.5);
+        nightlyPrice = adultsCost + childrenCost;
+      } else {
+        const extraGuests = Math.max(totalPersons - villaData.baseGuests, 0);
+        const extraCost = extraGuests * villaData.extraGuestCharge;
+
+        nightlyPrice = basePrice + extraCost;
+      }
+
+      if (!isWeekend && villaData.weekDayDiscount > 0) {
+        const discount = (nightlyPrice * villaData.weekDayDiscount) / 100;
+        discountAmount += discount;
+      }
+      
+    }
     return res.json({
       success: true,
       isAvailable: true,
       priceDetails: {
-        basePrice,
         persons: totalPersons,
         nights,
-        totalPrice: priceResult.totalPrice,
-        discountPercent: priceResult.discountApplied ? discountPercent : 0,
+        pricingModel: villaData.pricingModel,
+        basePrice,
+        baseGuests: villaData.baseGuests,
+        extraGuestCharge: villaData.extraGuestCharge,
+        adults,
+        children,
+        infants,
+        adultsCost: adults * basePrice * nights,
+        childrenCost: children * (basePrice * 0.5) * nights,
+        infantsCost: 0,
+        discountPercent,
+        discountAmount,
+        totalPrice,
       },
     });
   } catch (error) {

@@ -3,7 +3,6 @@ import Booking from "../models/booking.model.js";
 import AvailabilityBlock from "../models/availabilityBlock.model.js";
 import cloudinary from "../config/cloudinary.js";
 
-
 // ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
   const { id } = req.user;
@@ -14,8 +13,12 @@ export const registerVilla = async (req, res) => {
       villaContactNo,
       villaAddress,
       rating,
-      guests,
+      pricingModel,
+      baseGuests,
+      extraGuestsAllowed,
+      extraGuestCharge,
       price,
+      weekDayDiscount,
       amenities,
       totalRooms,
       meals,
@@ -56,13 +59,23 @@ export const registerVilla = async (req, res) => {
       !villaContactNo ||
       !villaAddress ||
       rating === undefined ||
-      guests === undefined ||
+      !pricingModel ||
+      baseGuests === undefined ||
       price === undefined ||
       !amenities ||
       imageUrls.length === 0
     ) {
       return res.status(400).json({
         message: "All fields are required",
+        success: false,
+      });
+    }
+    if (
+      Number(extraGuestsAllowed) > 0 &&
+      (!extraGuestCharge || Number(extraGuestCharge) <= 0)
+    ) {
+      return res.status(400).json({
+        message: "Must enter price for extra guests",
         success: false,
       });
     }
@@ -74,8 +87,12 @@ export const registerVilla = async (req, res) => {
       villaContactNo,
       villaAddress,
       rating,
-      guests,
+      pricingModel,
+      baseGuests,
+      extraGuestsAllowed,
+      extraGuestCharge,
       price,
+      weekDayDiscount,
       amenities,
       totalRooms,
       meals: mealsData,
@@ -163,7 +180,9 @@ export const getAllVillas = async (req, res) => {
 
     // -------- GUEST FILTER --------
     if (totalGuests > 0) {
-      filter.guests = { $gte: totalGuests };
+      filter.$expr = {
+        $gte: [{ $add: ["$baseGuests", "$extraGuestsAllowed"] }, totalGuests],
+      };
     }
 
     /* ---------- DATE AVAILABILITY ---------- */

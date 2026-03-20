@@ -2,11 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { User } from "lucide-react";
 
-function GuestSelector({
-  bookingData = {},
-  setBookingData,
-  maxGuests = 1,
-}) {
+function GuestSelector({ bookingData = {}, setBookingData, maxGuests = 1 }) {
   const [dropdown, setDropdown] = useState(false);
   const selectorRef = useRef(null);
 
@@ -19,24 +15,28 @@ function GuestSelector({
   /* ================= CLICK OUTSIDE ================= */
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        selectorRef.current &&
-        !selectorRef.current.contains(event.target)
-      ) {
+      if (selectorRef.current && !selectorRef.current.contains(event.target)) {
         setDropdown(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /* ================= INCREASE ================= */
   const increaseGuest = (key) => {
-    if (totalGuests >= maxGuests) {
-      toast.error(`Maximum ${maxGuests} guests allowed`);
+    const newTotal = totalGuests + 1;
+
+    if (newTotal > maxGuests) {
+      toast.error(`Only ${maxGuests} guests allowed`);
       return;
+    }
+
+    if (newTotal > bookingData.baseGuests) {
+      toast(`Extra guest charges will apply ⚡`, {
+        icon: "💰",
+      });
     }
 
     setBookingData((prev) => ({
@@ -47,10 +47,17 @@ function GuestSelector({
 
   /* ================= DECREASE ================= */
   const decreaseGuest = (key, min) => {
-    setBookingData((prev) => ({
-      ...prev,
-      [key]: Math.max(min, (prev[key] ?? 0) - 1),
-    }));
+    setBookingData((prev) => {
+      const updated = {
+        ...prev,
+        [key]: Math.max(min, (prev[key] ?? 0) - 1),
+      };
+      if (key === "adults" && updated.adults < 1) {
+        updated.adults = 1;
+      }
+
+      return updated;
+    });
   };
 
   const guestTypes = [
