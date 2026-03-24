@@ -9,6 +9,7 @@ import {
   registerVilla,
   getPopularVillas,
   getSingleVilla,
+  updateVilla,
 } from "../controllers/villa.controller.js";
 // import { upload } from "../config/multer.js";
 import upload from "../middlewares/upload.js";
@@ -25,6 +26,7 @@ villaRouter.post(
 
 villaRouter.get("/get", isAuthenticated, isOwner, getOwnerVillas);
 villaRouter.get("/owner", isAuthenticated, isOwner, getOwnerVillas);
+villaRouter.put("/update/:id", isAuthenticated, isOwner, upload.array("images", 4), updateVilla);
 villaRouter.get("/get-all", getAllVillas);
 villaRouter.get("/popular", getPopularVillas);
 villaRouter.delete("/delete/:villaId", isAuthenticated, isOwner, deleteVilla);

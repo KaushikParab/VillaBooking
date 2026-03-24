@@ -215,3 +215,80 @@ export const getPopularRooms = async (req, res) => {
     });
   }
 };
+
+// ================= UPDATE ROOM =================
+export const updateRoom = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingRoom = await Room.findById(id);
+    if (!existingRoom) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found",
+      });
+    }
+
+    let existingImagesFromClient = [];
+    try {
+      existingImagesFromClient = req.body.existingImages
+        ? JSON.parse(req.body.existingImages)
+        : [];
+    } catch {
+      existingImagesFromClient = [];
+    }
+
+    let newImages = [];
+    if (req.files && req.files.length > 0) {
+      const uploads = req.files.map((file) => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream(
+              {
+                folder: "rooms",
+                transformation: [
+                  { width: 1200, crop: "limit" },
+                  { quality: "auto" },
+                  { fetch_format: "auto" },
+                ],
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+              },
+            )
+            .end(file.buffer);
+        });
+      });
+
+      newImages = await Promise.all(uploads);
+    }
+
+    const finalImages = [...existingImagesFromClient, ...newImages];
+
+    const mealsData = req.body.meals
+      ? JSON.parse(req.body.meals)
+      : existingRoom.meals;
+
+    const updatedRoom = await Room.findByIdAndUpdate(
+      id,
+      {
+        ...req.body,
+        meals: mealsData,
+        images: finalImages,
+      },
+      { new: true },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Room updated successfully",
+      room: updatedRoom,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Update failed",
+    });
+  }
+};

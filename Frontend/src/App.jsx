@@ -54,11 +54,25 @@ function App() {
             path="register-villa"
             element={owner ? <RegisterVilla /> : <Login />}
           />
+          <Route
+            path="register-villa/:id"
+            element={owner ? <RegisterVilla /> : <Login />}
+          />
           <Route path="rooms" element={owner ? <AllRooms /> : <Login />} />
           <Route path="add-room" element={owner ? <AddRoom /> : <Login />} />
+          <Route
+            path="add-room/:id"
+            element={owner ? <AddRoom /> : <Login />}
+          />
           <Route path="bookings" element={owner ? <Bookings /> : <Login />} />
-          <Route path="earnings" element={owner ? <OwnerEarnings /> : <Login />} />
-          <Route path="blocked-dates" element={<BlockedDates />} />
+          <Route
+            path="earnings"
+            element={owner ? <OwnerEarnings /> : <Login />}
+          />
+          <Route
+            path="blocked-dates"
+            element={owner ? <BlockedDates /> : <Login />}
+          />
         </Route>
       </Routes>
       {!ownerPath && <Footer />}

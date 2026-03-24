@@ -148,6 +148,9 @@ export const getAllVillas = async (req, res) => {
     } = req.query;
 
     const totalGuests = Number(adults) + Number(children) + Number(infants);
+    const guestCount = totalGuests > 0 ? totalGuests : 1;
+
+    let andConditions = [];
 
     let filter = {};
 
@@ -166,9 +169,31 @@ export const getAllVillas = async (req, res) => {
 
     // -------- PRICE FILTER --------
     if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
+      andConditions.push({
+        $or: [
+          // ENTIRE VILLA
+          {
+            pricingModel: "entire_villa",
+            price: {
+              ...(minPrice && { $gte: Number(minPrice) }),
+              ...(maxPrice && { $lte: Number(maxPrice) }),
+            },
+          },
+
+          // PER PERSON
+          {
+            pricingModel: "per_person",
+            price: {
+              ...(minPrice && {
+                $gte: Math.ceil(Number(minPrice) / guestCount),
+              }),
+              ...(maxPrice && {
+                $lte: Math.floor(Number(maxPrice) / guestCount),
+              }),
+            },
+          },
+        ],
+      });
     }
 
     // -------- LOCATION FILTER --------
@@ -180,9 +205,22 @@ export const getAllVillas = async (req, res) => {
 
     // -------- GUEST FILTER --------
     if (totalGuests > 0) {
-      filter.$expr = {
-        $gte: [{ $add: ["$baseGuests", "$extraGuestsAllowed"] }, totalGuests],
-      };
+      andConditions.push({
+        $or: [
+          {
+            pricingModel: "entire_villa",
+            $expr: {
+              $gte: [
+                { $add: ["$baseGuests", "$extraGuestsAllowed"] },
+                totalGuests,
+              ],
+            },
+          },
+          {
+            pricingModel: "per_person",
+          },
+        ],
+      });
     }
 
     /* ---------- DATE AVAILABILITY ---------- */
@@ -224,9 +262,6 @@ export const getAllVillas = async (req, res) => {
         $regex: new RegExp(city, "i"),
       };
     }
-
-    // COMBINED FILTERS
-    let andConditions = [];
 
     // AMENITIES
     if (amenities) {
@@ -396,6 +431,79 @@ export const getPopularVillas = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch popular villas",
+    });
+  }
+};
+
+export const updateVilla = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingVilla = await Villa.findById(id);
+    if (!existingVilla) {
+      return res.status(404).json({
+        success: false,
+        message: "Villa not found",
+      });
+    }
+
+    let existingImagesFromClient = [];
+    if (req.body.existingImages) {
+      existingImagesFromClient = JSON.parse(req.body.existingImages);
+    }
+
+    let newImages = [];
+    if (req.files && req.files.length > 0) {
+      const uploadPromises = req.files.map((file) => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader
+            .upload_stream(
+              {
+                folder: "villas",
+                resource_type: "image",
+                transformation: [
+                  { width: 1200, crop: "limit" },
+                  { quality: "auto" },
+                  { fetch_format: "auto" },
+                ],
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+              },
+            )
+            .end(file.buffer);
+        });
+      });
+
+      newImages = await Promise.all(uploadPromises);
+    }
+
+    const finalImages = [...existingImagesFromClient, ...newImages];
+
+    const mealsData = req.body.meals
+      ? JSON.parse(req.body.meals)
+      : existingVilla.meals;
+
+    const updatedVilla = await Villa.findByIdAndUpdate(
+      id,
+      {
+        ...req.body,
+        meals: mealsData,
+        images: finalImages,
+      },
+      { new: true },
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Villa updated successfully",
+      villa: updatedVilla,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Update failed",
     });
   }
 };

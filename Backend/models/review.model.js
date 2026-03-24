@@ -7,6 +7,11 @@ const reviewSchema = new mongoose.Schema(
       ref: "Villa",
       required: true,
     },
+    room: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      default: null,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -24,8 +29,9 @@ const reviewSchema = new mongoose.Schema(
       default: 5,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
+reviewSchema.index({ user: 1, villa: 1, room: 1 }, { unique: true });
 const Review = mongoose.model("Review", reviewSchema);
 export default Review;

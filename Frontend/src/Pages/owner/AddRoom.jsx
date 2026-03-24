@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useContext } from "react";
 import { toast } from "react-hot-toast";
 import { AppContext } from "../../Context/AppContext";
+import { useParams } from "react-router-dom";
 
 const AddRoom = () => {
+  const { id } = useParams();
+  const isEdit = Boolean(id);
   const { axios, navigate } = useContext(AppContext);
   const [loading, setLoading] = useState(false);
   const [roomData, setRoomData] = useState({
@@ -27,6 +30,7 @@ const AddRoom = () => {
   const suggestionRef = useRef(null);
   const roomTypeSuggestions = [
     "Standard Room",
+    "Dormatory Room",
     "Deluxe Room",
     "Superior Room",
     "Executive Room",
@@ -120,6 +124,10 @@ const AddRoom = () => {
     e.preventDefault();
     if (loading) return;
 
+    const existingImages = roomData.images.filter(
+      (img) => typeof img === "string",
+    );
+
     const formData = new FormData();
     formData.append("villa", roomData.villa);
     formData.append("roomType", roomData.roomType);
@@ -129,6 +137,7 @@ const AddRoom = () => {
     formData.append("isAvailable", roomData.isAvailable);
     formData.append("amenities", roomData.amenities);
     formData.append("meals", JSON.stringify(roomData.meals));
+    formData.append("existingImages", JSON.stringify(existingImages));
 
     const hasImage = roomData.images.some((img) => img);
 
@@ -139,13 +148,19 @@ const AddRoom = () => {
 
     setImageError("");
 
-    for (let i = 0; i < roomData.images.length; i++) {
-      formData.append("images", roomData.images[i]);
-    }
+    roomData.images.forEach((img) => {
+      if (img instanceof File) {
+        formData.append("images", img);
+      }
+    });
+
     try {
       setLoading(true);
 
-      const { data } = await axios.post("/api/room/add", formData, {
+      const url = isEdit ? `/api/room/update/${id}` : "/api/room/add";
+      const method = isEdit ? axios.put : axios.post;
+
+      const { data } = await method(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       if (data.success) {
@@ -181,9 +196,49 @@ const AddRoom = () => {
     }
   };
 
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchRoom = async () => {
+      try {
+        const { data } = await axios.get("/api/room/get-all");
+
+        if (data.success) {
+          const room = data.rooms.find((r) => r._id === id);
+
+          if (room) {
+            setRoomData({
+              villa: room.villa._id,
+              roomType: room.roomType,
+              guests: room.guests,
+              pricePerNight: room.pricePerNight,
+              description: room.description,
+              amenities: room.amenities,
+              images: room.images,
+              isAvailable: room.isAvailable,
+              meals: room.meals || {
+                breakfast: false,
+                lunch: false,
+                dinner: false,
+              },
+            });
+          }
+        }
+      } catch (error) {
+        toast.error("Failed to fetch room");
+      }
+    };
+
+    fetchRoom();
+  }, [id]);
+
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
-      <form onSubmit={handleSubmit} autoComplete="off" className="md:p-10 p-4 space-y-5 max-w-lg">
+      <form
+        onSubmit={handleSubmit}
+        autoComplete="off"
+        className="md:p-10 p-4 space-y-5 max-w-lg"
+      >
         <div>
           <p className="text-base font-medium">Room Image</p>
 
@@ -206,7 +261,9 @@ const AddRoom = () => {
                     className="max-w-24 rounded-md cursor-pointer"
                     src={
                       roomData.images[index]
-                        ? URL.createObjectURL(roomData.images[index])
+                        ? typeof roomData.images[index] === "string"
+                          ? roomData.images[index]
+                          : URL.createObjectURL(roomData.images[index])
                         : "https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/e-commerce/uploadArea.png"
                     }
                     alt="upload"
@@ -399,14 +456,13 @@ const AddRoom = () => {
       : "bg-[#6A0DAD] hover:bg-[#5a0aa0]"
   }`}
         >
-          {loading ? (
-            <span className="flex items-center gap-2 justify-center">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Adding Room...
-            </span>
-          ) : (
-            "Add Room"
-          )}
+          {loading
+            ? isEdit
+              ? "Updating..."
+              : "Adding..."
+            : isEdit
+              ? "Update Room"
+              : "Add Room"}
         </button>
       </form>
     </div>

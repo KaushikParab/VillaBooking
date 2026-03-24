@@ -13,13 +13,21 @@ const getTotalPersons = ({ adults = 0, children = 0, infants = 0 }) => {
 };
 
 // ================= EMAIL HELPER =================
-const sendBookingEmail = async (booking, subject, title) => {
+const sendBookingEmail = async (booking, subject, title, extraDetails = {}) => {
   try {
     if (!booking.user || !booking.villa) return;
+
+    if (!booking.user.email) {
+      booking = await Booking.findById(booking._id).populate("user villa room");
+    }
 
     const owner = await User.findById(booking.villa.owner);
 
     const recipients = [booking.user.email, owner?.email].filter(Boolean);
+
+    const { oldPersons, oldTotalPrice, isUpdate = false } = extraDetails;
+    const priceDifference =
+      isUpdate && oldTotalPrice ? booking.totalPrice - oldTotalPrice : 0;
 
     await transporter.sendMail({
       from: process.env.SENDER_EMAIL,
@@ -27,6 +35,10 @@ const sendBookingEmail = async (booking, subject, title) => {
       subject,
       html: `
         <h2>${title}</h2>
+        <hr/>
+        <h3>User Details</h3>
+        <p><strong>Name:</strong> ${booking.user?.name || "N/A"}</p>
+        <p><strong>Email:</strong> ${booking.user?.email || "N/A"}</p>
         <hr/>
         <p><strong>Booking ID:</strong> ${booking._id}</p>
         <p><strong>Villa:</strong> ${booking.villa?.villaName || "Villa"}</p>
@@ -37,10 +49,38 @@ const sendBookingEmail = async (booking, subject, title) => {
         <p><strong>Check-out:</strong> ${new Date(
           booking.checkOut,
         ).toDateString()}</p>
+        ${
+          isUpdate
+            ? `
+        <h3>Booking Update Details</h3>
+        <p><strong>Previous Guests:</strong> ${oldPersons}</p>
+        <p><strong>Updated Guests:</strong> ${booking.persons}</p>
+
+        <p><strong>Previous Total Price:</strong> ₹ ${oldTotalPrice}</p>
+        <p><strong>Updated Total Price:</strong> ₹ ${booking.totalPrice}</p>
+
+        ${
+          priceDifference > 0
+            ? `<p style="color: red; font-weight: bold;">
+                Price Increased: An additional amount of ₹ ${priceDifference} is payable at the villa.
+              </p>`
+            : priceDifference < 0
+              ? `<p style="color: green; font-weight: bold;">
+                    Price Reduced: A refund of ₹ ${Math.abs(priceDifference)} will be provided at the villa.
+                  </p>`
+              : ""
+        }
+        `
+            : `
         <p><strong>Guests:</strong> ${booking.persons}</p>
         <p><strong>Total Price:</strong> ₹ ${booking.totalPrice}</p>
+        `
+        }
         <p><strong>Payment Method:</strong> ${booking.paymentMethod}</p>
         <p><strong>Status:</strong> ${booking.status}</p>
+        <p style="color: orange; font-weight: bold;">
+          Note: You can update a confirmed booking only once.
+        </p>
       `,
     });
   } catch (error) {
@@ -53,17 +93,22 @@ export const checkAvailability = async ({
   room,
   checkInDate,
   checkOutDate,
+  excludeBookingId = null,
 }) => {
   const dateFilter = {
     villa,
     checkIn: { $lte: new Date(checkOutDate) },
     checkOut: { $gte: new Date(checkInDate) },
+    status: { $ne: "cancelled" },
   };
+
+  if (excludeBookingId) {
+    dateFilter._id = { $ne: excludeBookingId };
+  }
 
   // WEBSITE BOOKINGS
   const villaBooked = await Booking.findOne({
     ...dateFilter,
-    status: { $ne: "cancelled" },
     bookingType: "villa",
   });
 
@@ -159,6 +204,218 @@ export const checkVillaAvailability = async (req, res) => {
     res.json({ success: true, isAvailable });
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateBooking = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      bookingId,
+      checkInDate,
+      checkOutDate,
+      adults = 0,
+      children = 0,
+      infants = 0,
+    } = req.body;
+
+    if (!bookingId || !checkInDate || !checkOutDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID, check-in and check-out dates are required",
+      });
+    }
+
+    const booking = await Booking.findOne({
+      _id: bookingId,
+      user: userId,
+    }).populate("room villa");
+
+    const oldPersons = booking.persons;
+    const oldTotalPrice = booking.totalPrice;
+
+    if (!booking) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.status === "confirmed" && booking.hasUpdatedAfterConfirm) {
+      return res.status(400).json({
+        success: false,
+        message: "You can update confirmed booking only once",
+      });
+    }
+
+    if (booking.status === "cancelled") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Cannot update a cancelled booking" });
+    }
+
+    const now = new Date();
+    const newCheckIn = new Date(checkInDate);
+    const newCheckOut = new Date(checkOutDate);
+    const checkInDateObj = new Date(booking.checkIn);
+    const diffInHours = (checkInDateObj - now) / (1000 * 60 * 60);
+
+    if (diffInHours < 24) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update booking within 24 hours of check-in",
+      });
+    }
+
+    if (newCheckIn >= newCheckOut) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid date range" });
+    }
+
+    if (newCheckIn < new Date(now.toISOString().split("T")[0])) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in date must be today or in the future",
+      });
+    }
+
+    if (new Date(booking.checkIn) < now) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot edit a booking that has already started",
+      });
+    }
+
+    const totalPersons = Number(adults) + Number(children) + Number(infants);
+    if (totalPersons <= 0) {
+      return res
+        .status(400)
+        .json({ success: false, message: "At least one guest required" });
+    }
+
+    let maxGuests = 0;
+
+    if (booking.bookingType === "villa") {
+      const villaData = await Villa.findById(booking.villa);
+      if (!villaData) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Villa not found" });
+      }
+      maxGuests = villaData.baseGuests + villaData.extraGuestsAllowed;
+    } else {
+      const roomData = await Room.findById(booking.room).populate("villa");
+      if (!roomData) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Room not found" });
+      }
+      maxGuests = roomData.guests;
+    }
+
+    if (totalPersons > maxGuests) {
+      return res.status(400).json({
+        success: false,
+        message: `Maximum ${maxGuests} guests allowed`,
+      });
+    }
+
+    const isAvailable = await checkAvailability({
+      villa: booking.villa._id || booking.villa,
+      room:
+        booking.bookingType === "room"
+          ? booking.room._id || booking.room
+          : null,
+      checkInDate,
+      checkOutDate,
+      excludeBookingId: bookingId,
+    });
+
+    if (!isAvailable) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Selected dates are not available" });
+    }
+
+    let totalPrice = 0;
+
+    if (booking.bookingType === "villa") {
+      const villaData = await Villa.findById(booking.villa);
+      totalPrice = calculateDynamicPrice({
+        pricingModel: villaData.pricingModel,
+        basePrice: Number(villaData.price),
+        baseGuests: villaData.baseGuests,
+        extraGuestsAllowed: villaData.extraGuestsAllowed,
+        extraGuestCharge: villaData.extraGuestCharge,
+        totalPersons,
+        adults,
+        children,
+        infants,
+        checkIn: newCheckIn,
+        checkOut: newCheckOut,
+        discountPercent: villaData.weekDayDiscount || 0,
+      }).totalPrice;
+    } else {
+      const roomData = await Room.findById(booking.room).populate("villa");
+      let price = 0;
+      for (
+        let d = new Date(newCheckIn);
+        d < newCheckOut;
+        d.setDate(d.getDate() + 1)
+      ) {
+        const day = d.getDay();
+        const isWeekend = day === 0 || day === 6;
+        const adultsCost = adults * roomData.pricePerNight;
+        const childrenCost = children * (roomData.pricePerNight * 0.5);
+        let nightlyPrice = adultsCost + childrenCost;
+        if (!isWeekend && roomData.villa.weekDayDiscount > 0) {
+          nightlyPrice -= (nightlyPrice * roomData.villa.weekDayDiscount) / 100;
+        }
+        price += nightlyPrice;
+      }
+      totalPrice = Math.round(price);
+    }
+
+    booking.checkIn = newCheckIn;
+    booking.checkOut = newCheckOut;
+    booking.adults = Number(adults);
+    booking.children = Number(children);
+    booking.infants = Number(infants);
+    booking.persons = totalPersons;
+    booking.totalPrice = totalPrice;
+
+    if (booking.status === "pending" && booking.isPaid) {
+      booking.status = "confirmed";
+    }
+
+    if (booking.status === "confirmed") {
+      booking.hasUpdatedAfterConfirm = true;
+    }
+    await booking.save();
+
+    const updated = await Booking.findById(bookingId).populate(
+      "room rooms villa user",
+    );
+
+    await sendBookingEmail(
+      updated,
+      "Booking Updated Successfully",
+      "Your Booking Has Been Updated ✏️",
+      {
+        oldPersons,
+        oldTotalPrice,
+        isUpdate: true,
+      },
+    );
+
+    res.json({
+      success: true,
+      message: "Booking updated successfully",
+      booking: updated,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -867,7 +1124,6 @@ export const previewBookingPrice = async (req, res) => {
         const discount = (nightlyPrice * villaData.weekDayDiscount) / 100;
         discountAmount += discount;
       }
-      
     }
     return res.json({
       success: true,

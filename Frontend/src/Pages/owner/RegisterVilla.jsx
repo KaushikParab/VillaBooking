@@ -1,8 +1,11 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import { AppContext } from "../../Context/AppContext";
 import toast from "react-hot-toast";
+import { useParams } from "react-router-dom";
 
 const RegisterVilla = () => {
+  const { id } = useParams();
+  const isEdit = Boolean(id);
   const { axios, navigate } = useContext(AppContext);
   const [imageError, setImageError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,6 +83,8 @@ const RegisterVilla = () => {
       return;
     }
 
+    const existingImages = data.images.filter((img) => typeof img === "string");
+
     const formData = new FormData();
     formData.append("villaName", data.villaName);
     formData.append("villaContactNo", data.villaContactNo);
@@ -93,8 +98,11 @@ const RegisterVilla = () => {
     formData.append("weekDayDiscount", data.weekDayDiscount);
     formData.append("amenities", data.amenities);
     formData.append("meals", JSON.stringify(data.meals));
+    formData.append("existingImages", JSON.stringify(existingImages));
 
-    const hasImage = data.images.some((img) => img);
+    const hasImage =
+      data.images.length > 0 &&
+      data.images.some((img) => img instanceof File || typeof img === "string");
 
     if (!hasImage) {
       setImageError("Please upload at least one villa image.");
@@ -103,13 +111,19 @@ const RegisterVilla = () => {
 
     setImageError("");
 
-    for (let i = 0; i < data.images.length; i++) {
-      formData.append("images", data.images[i]);
-    }
+    data.images.forEach((img) => {
+      if (img instanceof File) {
+        formData.append("images", img);
+      }
+    });
 
     try {
       setLoading(true);
-      const { data: res } = await axios.post("/api/villa/register", formData, {
+      const url = isEdit ? `/api/villa/update/${id}` : "/api/villa/register";
+
+      const method = isEdit ? axios.put : axios.post;
+
+      const { data: res } = await method(url, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -153,6 +167,44 @@ const RegisterVilla = () => {
     }
   };
 
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchVilla = async () => {
+      try {
+        const { data: res } = await axios.get(`/api/villa/${id}`);
+
+        if (res.success) {
+          const v = res.villa;
+
+          setData({
+            villaName: v.villaName || "",
+            villaContactNo: v.villaContactNo || "",
+            villaAddress: v.villaAddress || "",
+            rating: v.rating || "",
+            pricingModel: v.pricingModel || "per_person",
+            baseGuests: v.baseGuests || "",
+            extraGuestsAllowed: v.extraGuestsAllowed || "",
+            extraGuestCharge: v.extraGuestCharge || "",
+            price: v.price || "",
+            weekDayDiscount: v.weekDayDiscount || "",
+            amenities: v.amenities || "",
+            images: v.images || [],
+            meals: v.meals || {
+              breakfast: false,
+              lunch: false,
+              dinner: false,
+            },
+          });
+        }
+      } catch (err) {
+        toast.error("Failed to fetch villa");
+      }
+    };
+
+    fetchVilla();
+  }, [id]);
+
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
       <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
@@ -179,7 +231,9 @@ const RegisterVilla = () => {
                     className="max-w-24 rounded-md cursor-pointer"
                     src={
                       data.images[index]
-                        ? URL.createObjectURL(data.images[index])
+                        ? typeof data.images[index] === "string"
+                          ? data.images[index]
+                          : URL.createObjectURL(data.images[index])
                         : "https://raw.githubusercontent.com/prebuiltui/prebuiltui/main/assets/e-commerce/uploadArea.png"
                     }
                     alt="upload"
@@ -423,7 +477,13 @@ eg. WiFi, Pool"
                             : "bg-[#6A0DAD] hover:bg-[#5a0aa0]"
                         }`}
         >
-          {loading ? "Registering..." : "Register Villa"}
+          {loading
+            ? isEdit
+              ? "Updating..."
+              : "Registering..."
+            : isEdit
+              ? "Update Villa"
+              : "Register Villa"}
         </button>
       </form>
     </div>

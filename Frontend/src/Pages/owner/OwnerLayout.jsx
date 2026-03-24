@@ -46,7 +46,7 @@ function OwnerLayout() {
   };
   return (
     <>
-      <div className="flex items-center justify-between px-4 md:px-8 border-b border-gray-300 py-3 bg-black transition-all duration-300">
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 md:px-8 border-b border-gray-300 py-3 bg-black transition-all duration-300">
         <Link to="/owner" className="flex items-center gap-3 select-none">
           <span className="flex font-extrabold text-2xl md:text-3xl tracking-wide">
             {"Stavilo".split("").map((char, index) => (
@@ -63,7 +63,7 @@ function OwnerLayout() {
           
           ${
             index === 0
-              ? "text-yellow-500 hover:text-amber-400 dark:hover:text-yellow-300"
+              ? "text-yellow-300 hover:text-amber-400 dark:hover:text-yellow-300 scale-125 -translate-y-0.5 mr-0.5 drop-shadow-[0_0_10px_rgba(250,204,21,0.55)]"
               : "text-zinc-800 dark:text-zinc-200 hover:text-yellow-500 dark:hover:text-yellow-400"
           }
         `}

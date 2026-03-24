@@ -2,12 +2,23 @@ import { useContext, useEffect, useState } from "react";
 import { MapPin, Users, CheckCircle, Clock, XCircle } from "lucide-react";
 import { AppContext } from "../Context/AppContext.jsx";
 import toast from "react-hot-toast";
+import GuestSelector from "../Components/GuestSelector";
 
 function MyBookings() {
   const [cancellingId, setCancellingId] = useState(null);
   const [payAtVillaLoadingId, setPayAtVillaLoadingId] = useState(null);
+  const [editingBookingId, setEditingBookingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    checkIn: "",
+    checkOut: "",
+    adults: 1,
+    children: 0,
+    infants: 0,
+  });
+  const [updatingId, setUpdatingId] = useState(null);
   const { axios } = useContext(AppContext);
   const [bookingData, setBookingData] = useState([]);
+  const [maxGuests, setMaxGuests] = useState(1);
 
   // ================= FETCH BOOKINGS =================
   const fetchMyBookings = async () => {
@@ -175,6 +186,110 @@ function MyBookings() {
     return diffInHours >= 24;
   };
 
+  const canEditBooking = (booking) => {
+    if (booking.status === "cancelled") return false;
+    if (booking.status === "confirmed") {
+      return !booking.hasUpdatedAfterConfirm;
+    }
+    const now = new Date();
+    const checkIn = new Date(booking.checkIn);
+    const diffInHours = (checkIn - now) / (1000 * 60 * 60);
+    return diffInHours >= 24;
+  };
+
+  const openEditForm = (booking) => {
+    setEditingBookingId(booking._id);
+    setEditFormData({
+      checkIn: new Date(booking.checkIn).toISOString().slice(0, 10),
+      checkOut: new Date(booking.checkOut).toISOString().slice(0, 10),
+      adults: booking.adults || booking.persons || 1,
+      children: booking.children || 0,
+      infants: booking.infants || 0,
+      baseGuests: booking.villa?.baseGuests || 1,
+    });
+
+    if (booking.bookingType === "villa") {
+      const base = booking.villa?.baseGuests || 0;
+      const extra = booking.villa?.extraGuestsAllowed || 0;
+      setMaxGuests(base + extra);
+    } else {
+      setMaxGuests(booking.room?.guests || 1);
+    }
+  };
+
+  const closeEditForm = () => {
+    setEditingBookingId(null);
+    setEditFormData({
+      checkIn: "",
+      checkOut: "",
+      adults: 1,
+      children: 0,
+      infants: 0,
+    });
+  };
+
+  const handleEditInputChange = (field, value) => {
+    setEditFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleUpdateBooking = async (bookingId) => {
+    if (!bookingId) return;
+
+    if (!editFormData.checkIn || !editFormData.checkOut) {
+      toast.error("Please enter both check-in and check-out dates");
+      return;
+    }
+
+    const checkInDate = new Date(editFormData.checkIn);
+    const checkOutDate = new Date(editFormData.checkOut);
+    const today = new Date(new Date().toISOString().slice(0, 10));
+
+    if (checkInDate >= checkOutDate) {
+      toast.error("Check-in must be before check-out");
+      return;
+    }
+
+    if (checkInDate < today) {
+      toast.error("Check-in date cannot be before today");
+      return;
+    }
+
+    const adults = Number(editFormData.adults);
+    const children = Number(editFormData.children);
+    const infants = Number(editFormData.infants);
+    const totalGuests = adults + children + infants;
+
+    if (totalGuests < 1) {
+      toast.error("At least one guest is required");
+      return;
+    }
+
+    setUpdatingId(bookingId);
+
+    try {
+      const { data } = await axios.post("/api/bookings/update", {
+        bookingId,
+        checkInDate: editFormData.checkIn,
+        checkOutDate: editFormData.checkOut,
+        adults,
+        children,
+        infants,
+      });
+
+      if (data.success) {
+        toast.success(data.message || "Booking updated successfully");
+        fetchMyBookings();
+        closeEditForm();
+      } else {
+        toast.error(data.message || "Update failed");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen text-white py-10">
       <div className="max-w-7xl mx-auto px-4">
@@ -185,13 +300,69 @@ function MyBookings() {
           </p>
         </div>
 
+        {editingBookingId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-lg rounded-xl bg-[#121212] p-6 shadow-xl">
+              <h2 className="text-2xl font-semibold mb-4">Update Booking</h2>
+
+              <div className="grid grid-cols-1 gap-3">
+                <label className="text-sm text-gray-300">Check-in date</label>
+                <input
+                  type="date"
+                  value={editFormData.checkIn}
+                  min={new Date().toISOString().split("T")[0]}
+                  onChange={(e) =>
+                    handleEditInputChange("checkIn", e.target.value)
+                  }
+                  className="rounded-md border border-gray-600 bg-[#1E1E1E] p-2 text-white"
+                />
+
+                <label className="text-sm text-gray-300">Check-out date</label>
+                <input
+                  type="date"
+                  value={editFormData.checkOut}
+                  min={editFormData.checkIn}
+                  onChange={(e) =>
+                    handleEditInputChange("checkOut", e.target.value)
+                  }
+                  className="rounded-md border border-gray-600 bg-[#1E1E1E] p-2 text-white"
+                />
+
+                <GuestSelector
+                  bookingData={editFormData}
+                  setBookingData={setEditFormData}
+                  maxGuests={maxGuests}
+                />
+              </div>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  onClick={closeEditForm}
+                  className="rounded-md border border-gray-600 px-3 py-2 text-gray-200 hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleUpdateBooking(editingBookingId)}
+                  disabled={updatingId === editingBookingId}
+                  className="rounded-md bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700 disabled:bg-gray-500"
+                >
+                  {updatingId === editingBookingId
+                    ? "Updating..."
+                    : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-[#1E1E1E] rounded-2xl shadow-lg overflow-hidden">
           {/* HEADER */}
-          <div className="hidden md:grid md:grid-cols-12 px-6 py-4 border-b border-gray-500 font-semibold">
-            <div className="col-span-4">Villa & Room</div>
-            <div className="col-span-3">Dates</div>
-            <div className="col-span-3">Payment</div>
-            <div className="col-span-2">Status</div>
+          <div className="hidden md:grid md:grid-cols-12 px-6 py-4 border-b border-gray-500 font-semibold text-xl">
+            <div className="col-span-4 ml-8">Villa & Room</div>
+            <div className="col-span-3 ml-14">Dates</div>
+            <div className="col-span-3 ml-10">Payment</div>
+            <div className="col-span-2 ml-10">Status</div>
           </div>
 
           <div className="divide-y divide-gray-600">
@@ -220,8 +391,10 @@ function MyBookings() {
                         <h3 className="font-semibold text-lg">
                           {booking.villa?.villaName || "Villa"}
                         </h3>
-                        <p className="text-blue-500">
-                          {booking.room?.roomType || ""}
+                        <p className="text-blue-500 font-medium">
+                          {booking.bookingType === "villa"
+                            ? "🏡 Entire Villa"
+                            : `🛏️ ${booking.room?.roomType}`}
                         </p>
 
                         <div className="flex items-center text-sm text-gray-400 gap-1">
@@ -279,6 +452,28 @@ function MyBookings() {
                             {payAtVillaLoadingId === booking._id
                               ? "Processing..."
                               : "Pay at Villa"}
+                          </button>
+                        )}
+
+                        {canEditBooking(booking) && (
+                          <button
+                            onClick={() => {
+                              if (
+                                booking.status === "confirmed" &&
+                                !booking.hasUpdatedAfterConfirm
+                              ) {
+                                const confirmUpdate = window.confirm(
+                                  "You're about to update a confirmed booking. Please note that only one update is allowed after confirmation. Do you wish to proceed?",
+                                );
+
+                                if (!confirmUpdate) return;
+                              }
+
+                              openEditForm(booking);
+                            }}
+                            className="text-sm px-3 py-1 rounded-md transition-all duration-200 text-indigo-400 hover:text-white hover:bg-indigo-700 hover:scale-105"
+                          >
+                            Update Booking
                           </button>
                         )}
 

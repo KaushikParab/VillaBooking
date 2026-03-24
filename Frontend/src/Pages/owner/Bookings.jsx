@@ -102,8 +102,8 @@ function Bookings() {
                         </h3>
                         <p className="text-blue-400">
                           {booking.bookingType === "villa"
-                            ? "Entire Villa"
-                            : booking.room?.roomType}
+                            ? "🏡 Entire Villa"
+                            : `🛏️ ${booking.room?.roomType}`}
                         </p>
 
                         <div className="flex items-center gap-1 text-sm text-gray-400">
@@ -147,7 +147,7 @@ function Bookings() {
                         <span>{booking.paymentMethod}</span>
                       </div>
 
-                      <p className="font-bold">₹ {booking.totalPrice}</p>
+                      <p className="font-bold text-green-500">₹ {booking.totalPrice}</p>
                     </div>
 
                     {/* STATUS */}

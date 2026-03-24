@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import PriceBreakdown from "../Components/PriceBreakdown";
+import TextReviews from "../Components/TextReviews";
 
 const SingleRoomLoader = () => {
   return (
@@ -451,7 +452,7 @@ function SingleRoom() {
           {/* Booking Form */}
           <div className="lg:col-span-1">
             <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky top-20">
-              <h2 className="text-2xl font-bold mb-6">Book This Villa</h2>
+              <h2 className="text-2xl font-bold mb-6">Book This Room</h2>
               <form onSubmit={onSubmitHandler} className="space-y-4">
                 <div>
                   <label
@@ -521,6 +522,11 @@ function SingleRoom() {
               </form>
             </div>
           </div>
+        </div>
+
+        <div className="mt-12">
+          <hr class="border-t-4 border-gray-300 my-4"></hr>
+          <TextReviews />
         </div>
       </div>
     </div>

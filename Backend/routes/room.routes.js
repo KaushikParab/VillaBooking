@@ -8,6 +8,7 @@ import {
   getAllRooms,
   getOwnerRooms,
   getPopularRooms,
+  updateRoom,
 } from "../controllers/room.controller.js";
 import { upload } from "../config/multer.js";
 
@@ -18,12 +19,19 @@ roomRouter.post(
   upload.array("images"),
   isAuthenticated,
   isOwner,
-  addRoom
+  addRoom,
 );
 
 roomRouter.get("/get", isAuthenticated, isOwner, getOwnerRooms);
 roomRouter.get("/get-all", getAllRooms);
 roomRouter.get("/popular", getPopularRooms);
+roomRouter.put(
+  "/update/:id",
+  upload.array("images"),
+  isAuthenticated,
+  isOwner,
+  updateRoom,
+);
 roomRouter.delete("/delete/:roomId", isAuthenticated, isOwner, deleteRoom);
 
 export default roomRouter;

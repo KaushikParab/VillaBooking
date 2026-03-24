@@ -42,7 +42,7 @@ export default function VillaCard({ villa }) {
 
         {/* Rating Badge */}
         <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full flex items-center gap-1 text-sm">
-          <Star size={14} className="text-yellow-400" />
+          <Star size={14} className="text-yellow-400 fill-current" />
           {villa.rating || "4.5"}
         </div>
 

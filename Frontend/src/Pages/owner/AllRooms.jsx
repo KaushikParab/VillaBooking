@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { AppContext } from "../../Context/AppContext";
-import { MapIcon, Star } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { useEffect } from "react";
@@ -112,21 +112,21 @@ function AllRooms() {
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex items-start space-x-2">
-                        <MapIcon className="w-4 h-4 text-white/80 mt-1 flex-shrink-0" />
-                        <span className="text-white/80 text-sm leading-relaxed">
+                        <span className="text-white/90 text-base leading-relaxed">
                           {room.roomType}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex items-start space-x-2">
+                        <MapPin className="w-4 h-4 text-white/80 mt-1 flex-shrink-0" />
                         <span className="text-white/80 text-sm leading-relaxed">
                           {room.villa.villaAddress}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-6">
-                      <div className="flex items-start space-x-2">
+                    <td className="px-6 py-6 text-center align-middle">
+                      <div className="flex items-center justify-center space-x-2">
                         <Star className="w-4 h-4 text-yellow-400 fill-current" />
                         <span className="text-white/80 text-sm leading-relaxed">
                           {room.villa.rating}
@@ -135,7 +135,7 @@ function AllRooms() {
                     </td>
                     <td className="px-6 py-6">
                       <div className="flex items-start space-x-2">
-                        <span className="text-white/80 text-sm leading-relaxed">
+                        <span className="text-green-500 font-bold text-base leading-relaxed">
                           ₹ {room.pricePerNight}
                         </span>
                       </div>
@@ -153,8 +153,17 @@ function AllRooms() {
                         ))}
                       </div>
                     </td>
-                    <td>
-                      <button onClick={()=>deleteRoom(room._id)} className="bg-red-500 text-white py-1 px-4 rounded-full cursor-pointer">
+                    <td className="flex flex-col gap-2 px-6 py-6">
+                      <button
+                        onClick={() => navigate(`/owner/add-room/${room._id}`)}
+                        className="bg-blue-500 text-white py-1 px-4 rounded-full"
+                      >
+                        update
+                      </button>
+                      <button
+                        onClick={() => deleteRoom(room._id)}
+                        className="bg-red-500 text-white py-1 px-4 rounded-full cursor-pointer"
+                      >
                         delete
                       </button>
                     </td>

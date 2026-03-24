@@ -661,7 +661,8 @@ function SingleVilla() {
         </div>
       </div>
       {/* ================= REVIEWS ================= */}
-      <div className="mt-12">
+      <hr class="mt-10 border-t-4 border-gray-300 my-4"></hr>
+      <div className="m-10">
         <TextReviews />
       </div>
     </div>

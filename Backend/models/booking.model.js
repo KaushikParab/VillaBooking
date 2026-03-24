@@ -77,8 +77,13 @@ const bookingSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+
+    hasUpdatedAfterConfirm: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 /* ======================================================
@@ -86,10 +91,7 @@ const bookingSchema = new mongoose.Schema(
 ====================================================== */
 
 // TTL INDEX — Auto delete expired unpaid bookings
-bookingSchema.index(
-  { expiresAt: 1 },
-  { expireAfterSeconds: 0 }
-);
+bookingSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 // Prevent double booking at villa level
 bookingSchema.index({

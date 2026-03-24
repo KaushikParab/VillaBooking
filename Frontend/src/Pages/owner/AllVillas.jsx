@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import { AppContext } from "../../Context/AppContext";
-import { MapIcon, Star } from "lucide-react";
+import { Phone, Star, MapPin } from "lucide-react";
 import toast from "react-hot-toast";
 
 function AllVillas() {
@@ -63,12 +63,11 @@ function AllVillas() {
             <table className="w-full">
               <thead className="bg-gradient-to-r from-black to-indigo-800 text-white">
                 <tr>
-                  <th className="px-6 py-4 text-left">VILLA</th>
-                  <th className="px-6 py-4 text-left">LOCATION</th>
-                  <th className="px-6 py-4 text-left">VILLA OWNER</th>
-                  <th className="px-6 py-4 text-left">CONTACT</th>
+                  <th className="px-6 py-4 ml-2">VILLA</th>
+                  <th className="px-6 py-4 ml-2">LOCATION</th>
+                  <th className="px-6 py-4 ml-2">CONTACT</th>
                   <th className="px-6 py-4 text-left">RATING</th>
-                  <th className="px-6 py-4 text-left">PRICE/NIGHT</th>
+                  <th className="px-6 py-4 text-left">Pricing</th>
                   <th className="px-6 py-4 text-left">AMENITIES</th>
                   <th className="px-6 py-4 text-left">ACTION</th>
                 </tr>
@@ -101,32 +100,42 @@ function AllVillas() {
                     </td>
 
                     {/* Location */}
-                    <td className="px-6 py-5 text-white/80">
-                      <div className="flex gap-2">
-                        <MapIcon size={16} />
+                    <td className="px-6 py-5 text-white/80 text-base">
+                      <div className="flex items-top gap-1">
+                        <MapPin size={16} />
                         {villa.villaAddress}
                       </div>
                     </td>
 
-                    {/* Owner */}
-                    <td className="px-6 py-5 text-white/80">
-                      {villa.owner?.name}
-                    </td>
-
                     {/* Contact */}
                     <td className="px-6 py-5 text-white/80">
-                      {villa.villaContactNo}
+                      <div className="flex items-center justify-center whitespace-nowrap gap-2">
+                        <Phone size={16} />
+                        <span>+91-{villa.villaContactNo}</span>
+                      </div>
                     </td>
 
                     {/* Rating */}
-                    <td className="px-6 py-5 text-white/80 flex items-center gap-1">
-                      <Star size={16} className="text-yellow-400" />
-                      {villa.rating}
+                    <td className="px-6 py-5 text-white/80 text-center align-middle">
+                      <div className="flex items-center justify-center gap-1">
+                        <Star
+                          size={16}
+                          className="text-yellow-400 fill-current"
+                        />
+                        <span>{villa.rating}</span>
+                      </div>
                     </td>
 
                     {/* Price */}
                     <td className="px-6 py-5 text-green-500 font-bold">
-                      ₹ {villa.price}
+                      <div className="flex flex-col">
+                        <span className="whitespace-nowrap">₹ {villa.price}</span>
+                        <span className="text-xs text-purple-400 font-lg whitespace-nowrap">
+                          {villa.pricingModel === "per_person"
+                            ? "/ Person / Night"
+                            : "/ Night"}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Amenities */}
@@ -144,7 +153,15 @@ function AllVillas() {
                     </td>
 
                     {/* Action */}
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 flex flex-col gap-2">
+                      <button
+                        onClick={() =>
+                          navigate(`/owner/register-villa/${villa._id}`)
+                        }
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded-full"
+                      >
+                        update
+                      </button>
                       <button
                         onClick={() => deleteVilla(villa._id)}
                         className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full"

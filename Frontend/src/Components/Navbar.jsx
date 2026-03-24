@@ -72,7 +72,7 @@ const Navbar = () => {
           
           ${
             index === 0
-              ? "text-yellow-500 hover:text-amber-400 dark:hover:text-yellow-300"
+              ? "text-yellow-300 hover:text-amber-400 dark:hover:text-yellow-300 scale-125 -translate-y-0.5 mr-0.5 drop-shadow-[0_0_10px_rgba(250,204,21,0.55)]"
               : "text-zinc-800 dark:text-zinc-200 hover:text-yellow-500 dark:hover:text-yellow-400"
           }
         `}
