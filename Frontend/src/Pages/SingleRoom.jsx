@@ -450,8 +450,11 @@ function SingleRoom() {
           </div>
 
           {/* Booking Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky top-20">
+          <div className="lg:col-span-3 flex justify-center my-10">
+            <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-gray-400 to-transparent"></div>
+          </div>
+          <div className="lg:col-span-3 flex justify-center">
+            <div className="w-full max-w-lg bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-6 sm:p-8">
               <h2 className="text-2xl font-bold mb-6">Book This Room</h2>
               <form onSubmit={onSubmitHandler} className="space-y-4">
                 <div>

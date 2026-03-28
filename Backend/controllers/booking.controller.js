@@ -78,6 +78,7 @@ const sendBookingEmail = async (booking, subject, title, extraDetails = {}) => {
         }
         <p><strong>Payment Method:</strong> ${booking.paymentMethod}</p>
         <p><strong>Status:</strong> ${booking.status}</p>
+        <p><strong>Villa Address:</strong> ${booking.villa.villaAddress}</p>
         <p style="color: orange; font-weight: bold;">
           Note: You can update a confirmed booking only once.
         </p>

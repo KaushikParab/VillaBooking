@@ -4,6 +4,7 @@ const villaSchema = new mongoose.Schema(
   {
     villaName: { type: String, required: true },
     villaContactNo: { type: String, required: true },
+    villaDescription: { type: String, required: true },
     villaAddress: { type: String, required: true },
     rating: { type: String, required: true },
     pricingModel: {
@@ -15,7 +16,7 @@ const villaSchema = new mongoose.Schema(
     extraGuestsAllowed: { type: Number, default: 0, min: 0 },
     extraGuestCharge: { type: Number, default: 0 },
     price: { type: Number, required: true },
-    weekDayDiscount: { type: Number,  default: 0, min: 0, max: 100},
+    weekDayDiscount: { type: Number, default: 0, min: 0, max: 100 },
     amenities: { type: String, required: true },
     images: { type: [String], required: true },
     totalRooms: { type: Number, default: 0 },

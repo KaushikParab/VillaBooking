@@ -500,7 +500,7 @@ function SingleVilla() {
             })}
           </div>
         </div>
-        <div className="grid lg:grid-cols-3 gap-8 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8 items-start">
           {/* LEFT SIDE */}
           <div className="lg:col-span-2 space-y-8">
             {/* AMENITIES */}
@@ -560,9 +560,19 @@ function SingleVilla() {
             </div>
           </div>
 
+          <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold mb-4">About This Villa</h2>
+            <p className="text-[#ffffff]/60 leading-relaxed">
+              {villa?.villaDescription}
+            </p>
+          </div>
+
           {/* Booking Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-8 sticky">
+          <div className="lg:col-span-3 flex justify-center my-10">
+            <div className="w-full h-[2px] bg-gradient-to-r from-transparent via-gray-400 to-transparent"></div>
+          </div>
+          <div className="lg:col-span-3 flex justify-center">
+            <div className="w-full max-w-md bg-[#1E1E1E]/80 text-[#ffffff] rounded-2xl shadow-lg p-6 sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-2xl font-bold mb-6">Book This Villa</h2>
               <form onSubmit={onSubmitHandler} className="space-y-4">
                 <div>

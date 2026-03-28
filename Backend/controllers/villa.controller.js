@@ -11,6 +11,7 @@ export const registerVilla = async (req, res) => {
     const {
       villaName,
       villaContactNo,
+      villaDescription,
       villaAddress,
       rating,
       pricingModel,
@@ -85,6 +86,7 @@ export const registerVilla = async (req, res) => {
     await Villa.create({
       villaName,
       villaContactNo,
+      villaDescription,
       villaAddress,
       rating,
       pricingModel,

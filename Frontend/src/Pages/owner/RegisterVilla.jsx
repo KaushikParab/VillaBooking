@@ -13,6 +13,7 @@ const RegisterVilla = () => {
   const [data, setData] = useState({
     villaName: "",
     villaContactNo: "",
+    villaDescription: "",
     villaAddress: "",
     rating: "",
     pricingModel: "per_person",
@@ -88,6 +89,7 @@ const RegisterVilla = () => {
     const formData = new FormData();
     formData.append("villaName", data.villaName);
     formData.append("villaContactNo", data.villaContactNo);
+    formData.append("villaDescription", data.villaDescription);
     formData.append("villaAddress", data.villaAddress);
     formData.append("rating", data.rating);
     formData.append("pricingModel", data.pricingModel);
@@ -180,6 +182,7 @@ const RegisterVilla = () => {
           setData({
             villaName: v.villaName || "",
             villaContactNo: v.villaContactNo || "",
+            villaDescription: v.villaDescription || "",
             villaAddress: v.villaAddress || "",
             rating: v.rating || "",
             pricingModel: v.pricingModel || "per_person",
@@ -275,6 +278,25 @@ const RegisterVilla = () => {
             className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
             required
           />
+        </div>
+
+        {/* Get Villa Description */}
+        <div className="flex flex-col gap-1 max-w-md">
+          <label
+            className="text-base font-medium"
+            htmlFor="product-description"
+          >
+            Villa Description
+          </label>
+          <textarea
+            name="villaDescription"
+            value={data.villaDescription}
+            onChange={handleChange}
+            rows={4}
+            className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40 resize-none"
+            placeholder="Type here"
+            required
+          ></textarea>
         </div>
 
         {/* Get Villa Address */}
