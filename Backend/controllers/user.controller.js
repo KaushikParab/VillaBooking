@@ -26,7 +26,7 @@ export const signup = async (req, res) => {
       role,
     });
     await newUser.save();
-    return res.json({ message: "user created successfully", success: true });
+    return res.json({ message: "account created successfully", success: true });
   } catch (error) {
     return res.json({ message: "internal server error", success: false });
   }

@@ -211,6 +211,9 @@ const RegisterVilla = () => {
   return (
     <div className="py-10 flex flex-col justify-between bg-[#1E1E1E]/90">
       <form onSubmit={handleSubmit} className="md:p-10 p-4 space-y-5 max-w-lg">
+        <h2 className="text-white font-bold text-3xl">
+          {isEdit ? "Update Villa" : "Register New Villa"}
+        </h2>
         {/* Get Villa Images */}
         <div>
           <p className="text-base font-medium">Villa Images</p>

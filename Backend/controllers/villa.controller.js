@@ -2,6 +2,7 @@ import Villa from "../models/villa.model.js";
 import Booking from "../models/booking.model.js";
 import AvailabilityBlock from "../models/availabilityBlock.model.js";
 import cloudinary from "../config/cloudinary.js";
+import Room from "../models/room.model.js";
 
 // ================= REGISTER VILLA =================
 export const registerVilla = async (req, res) => {
@@ -368,14 +369,31 @@ export const deleteVilla = async (req, res) => {
   const { villaId } = req.params;
 
   try {
-    const deletedVilla = await Villa.findByIdAndDelete(villaId);
+    const villa = await Villa.findById(villaId);
+    const rooms = await Room.find({ villa: villaId });
 
-    if (!deletedVilla) {
+    if (!villa) {
       return res.status(404).json({ message: "Villa not found" });
     }
 
+    for (let img of villa.images) {
+      const publicId = img.split("/").pop().split(".")[0];
+      await cloudinary.uploader.destroy(`villas/${publicId}`);
+    }
+
+    for (let room of rooms) {
+      for (let img of room.images) {
+        const publicId = img.split("/").pop().split(".")[0];
+        await cloudinary.uploader.destroy(`rooms/${publicId}`);
+      }
+    }
+
+    await Room.deleteMany({ villa: villaId });
+
+    await Villa.findByIdAndDelete(villaId);
+
     return res.status(200).json({
-      message: "Villa deleted successfully",
+      message: "Villa & related Rooms deleted successfully",
       success: true,
     });
   } catch (error) {

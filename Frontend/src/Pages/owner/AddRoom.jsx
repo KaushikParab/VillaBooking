@@ -239,6 +239,9 @@ const AddRoom = () => {
         autoComplete="off"
         className="md:p-10 p-4 space-y-5 max-w-lg"
       >
+        <h2 className="text-white font-bold text-3xl">
+          {isEdit ? "Update Room" : "Register New Room"}
+        </h2>
         <div>
           <p className="text-base font-medium">Room Image</p>
 

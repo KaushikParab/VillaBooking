@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 function AllVillas() {
   const { navigate, axios } = useContext(AppContext);
   const [villaData, setVillaData] = useState([]);
+  const [deletingId, setDeletingId] = useState(null);
 
   const fetchOwnerVillas = async () => {
     try {
@@ -27,6 +28,7 @@ function AllVillas() {
   //  DELETE VILLA
   const deleteVilla = async (id) => {
     try {
+      setDeletingId(id);
       const { data } = await axios.delete("/api/villa/delete/" + id);
 
       if (data.success) {
@@ -37,6 +39,8 @@ function AllVillas() {
       }
     } catch (error) {
       toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -82,7 +86,7 @@ function AllVillas() {
                     } hover:bg-[#3A3A3A] transition`}
                   >
                     {/* Villa */}
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 w-1/4">
                       <div className="flex items-center gap-4">
                         <img
                           src={
@@ -129,7 +133,9 @@ function AllVillas() {
                     {/* Price */}
                     <td className="px-6 py-5 text-green-500 font-bold">
                       <div className="flex flex-col">
-                        <span className="whitespace-nowrap">₹ {villa.price}</span>
+                        <span className="whitespace-nowrap">
+                          ₹ {villa.price}
+                        </span>
                         <span className="text-xs text-purple-400 font-lg whitespace-nowrap">
                           {villa.pricingModel === "per_person"
                             ? "/ Person / Night"
@@ -164,9 +170,14 @@ function AllVillas() {
                       </button>
                       <button
                         onClick={() => deleteVilla(villa._id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-full"
+                        disabled={deletingId === villa._id}
+                        className={`px-4 py-1 rounded-full text-white ${
+                          deletingId === villa._id
+                            ? "bg-red-300 cursor-not-allowed"
+                            : "bg-red-500 hover:bg-red-600"
+                        }`}
                       >
-                        delete
+                        {deletingId === villa._id ? "Deleting..." : "Delete"}
                       </button>
                     </td>
                   </tr>

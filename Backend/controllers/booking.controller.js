@@ -716,8 +716,14 @@ export const bookRoom = async (req, res) => {
     setTimeout(
       async () => {
         const latest = await Booking.findById(booking._id);
-        if (latest && !latest.isPaid) {
-          await Booking.findByIdAndDelete(booking._id);
+        if (!latest) return;
+
+        const now = new Date();
+        const checkInDate = new Date(latest.checkIn);
+        const diffInHours = (checkInDate - now) / (1000 * 60 * 60);
+
+        if (!latest.isPaid && latest.status === "pending" && diffInHours > 24) {
+          await Booking.findByIdAndDelete(latest._id);
         }
       },
       1 * 60 * 1000,

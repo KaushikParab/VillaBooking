@@ -87,7 +87,7 @@ function OwnerLayout() {
         </div>
       </div>
 
-      <div className="flex ">
+      <div className="flex min-h-[calc(100vh-64px)]">
         <div className="md:w-64 w-16 border-r h-[550px] text-base border-gray-300 pt-4 flex flex-col transition-all duration-300">
           {sidebarLinks.map((item, index) => {
             const isActive = location.pathname === item.path;
@@ -111,7 +111,9 @@ function OwnerLayout() {
           })}
         </div>
 
-        <Outlet />
+        <div className="flex-1 flex justify-center overflow-y-auto">
+          <Outlet />
+        </div>
       </div>
     </>
   );
